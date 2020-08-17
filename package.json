@@ -1,0 +1,22 @@
+{
+  "name": "mapannotater",
+  "version": "1.0.0",
+  "description": "map annotater desktop app",
+  "main": "index.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ben-Wunderlich/MapAnnotater.git"
+  },
+  "author": "Ben Wunderlich",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Ben-Wunderlich/MapAnnotater/issues"
+  },
+  "homepage": "https://github.com/Ben-Wunderlich/MapAnnotater#readme",
+  "dependencies": {
+    "electron": "^9.2.0"
+  }
+}
