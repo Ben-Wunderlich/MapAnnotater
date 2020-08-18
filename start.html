@@ -2,22 +2,77 @@
 <html lang="en">
 <head>
     <title>Start screne</title>
+    <style>
+        #mapscreen{
+            width: 90%;
+            height: 100%;
+            float: left;
+            position: absolute;
+            background-image: url('projects/drggg/image.jpg');
+        }
+
+        #rightbar{
+            position: absolute;
+            right: 0%;
+            width: 10%;
+            height: 100%;
+            background-color: #2f95f5;
+            display: block;
+        }
+        #tools{
+            position: relative;
+        }
+        #toptools{
+            top: 0%;
+            height: 40px;
+            background-color: rgb(54, 112, 56);
+        }
+        #bottools{
+            top: 90%;
+            width: 90%;
+            position: fixed;
+            height: 50px;
+            background-color: bisque;
+            visibility:hidden;
+        }
+        .marker{
+            position: absolute;
+        }
+
+    </style>
 </head>
 <body>
-    <h1>welcome to map annotater</h1>
-    <a href="next.html"><button">click to go to next page</button></a>
-    
-    
-    <!--<script type="text/javascript">
-        const { remote } = require('electron')
 
-        function nextWindow(){
-            remote.getCurrentWindow().loadURL(url.format({
-                pathname: path.join(__dirname, 'next.html'),
-                protocol:'file:',
-                slashes: true
-            }));
-        }
-    </script>-->
+    <div id="mapscreen">
+        <img src="map_markers/blue_bull.png" class="marker" style="left: 120px;top:300px;">
+
+    </div>
+
+
+
+    <div id="rightbar">
+        <div id=toptools class="tools">
+            <button>new</button>
+            <div id="toggleselect">
+                <h3>mouse option</h3>
+                <button>view</button>
+                <button>add</button>
+                <button>edit</button>
+            </div>
+            <select name="icons" id="icons">
+                <option><img src="map_markers/marker_bullseye.png"></option>
+            </select>
+        </div>
+
+        <div id=bottools class="tools">
+            <button>save</button>
+            <button>delete</button>
+        </div>
+    </div>
+    
+    <script src=drag.js></script>
+    <script type="text/javascript">
+        dragElement(document.getElementById("mapscreen"));
+    </script>
 </body>
 </html>

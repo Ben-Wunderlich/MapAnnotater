@@ -7,10 +7,57 @@
     <h2>new project</h2>
     <form>
         <div>
-            <label>project name</label>
-            <input type="text" id="newProjectName" autofocus>
+            <label>project information</label>
+            <input type="text" id="newProjectName" autofocus required>
+            <input type="file" id=imageFile accept=".png, .jpg, .jpeg" required>
         </div>
         <button type="submit">create</button>
     </form>
+
+    <script>
+        const electron = require('electron');
+        const {ipcRenderer} = electron;
+        const fs = require('fs');
+        const path = require('path');
+        const dialog = electron.remote.dialog;
+
+        const form = document.querySelector('form');
+        form.addEventListener('submit', submitForm);
+
+        function ProjectAlreadyExists(projName){
+            const folderPath = path.join(__dirname,'projects',projName);
+            return fs.existsSync(folderPath);
+        }
+
+        function submitForm(event){
+            event.preventDefault();
+
+            const projName = document.querySelector("#newProjectName").value;
+            const image = document.querySelector("#imageFile").files[0];
+
+            if(ProjectAlreadyExists(projName)){
+                let errorStr = "a project called '"+projName+"' already exists, overwrite it?"
+
+                let options = {
+                    type: 'warning',
+                    buttons: ['no', 'yes'],
+                    message: errorStr
+                }
+                const response = dialog.showMessageBoxSync(options);
+                if(response === 0){//if said no, but based on order of buttons only
+                    return;
+                }
+            }
+
+            var arrayBuffer;
+            var fileReader = new FileReader();
+            fileReader.onload = function(event) {
+                arrayBuffer = event.target.result;
+                ipcRenderer.send('project:add', [projName, Buffer.from(arrayBuffer)]);
+            };
+            fileReader.readAsArrayBuffer(image);
+        }
+
+    </script>
 </body>
 </html>
