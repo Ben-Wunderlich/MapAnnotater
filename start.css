@@ -1,0 +1,39 @@
+html{
+    background-color: #222831;
+}
+
+#mapscreen{
+    width: 90%;
+    height: 100%;
+    float: left;
+    position: absolute;
+    /*background-image: url('projects/drggg/image.jpg');*/
+}
+
+#rightbar{
+    position: absolute;
+    right: 0%;
+    width: 200px;
+    height: 100%;
+    background-color: #30475e;
+    display: block;
+}
+#tools{
+    position: relative;
+}
+#toptools{
+    top: 0%;
+    height: 40px;
+    background-color: #f2a365;
+}
+#bottools{
+    top: 90%;
+    width: 90%;
+    position: fixed;
+    height: 50px;
+    background-color: #ececec;
+    visibility:hidden;
+}
+.marker{
+    position: absolute;
+}

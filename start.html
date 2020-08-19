@@ -2,44 +2,7 @@
 <html lang="en">
 <head>
     <title>Start screne</title>
-    <style>
-        #mapscreen{
-            width: 90%;
-            height: 100%;
-            float: left;
-            position: absolute;
-            background-image: url('projects/drggg/image.jpg');
-        }
-
-        #rightbar{
-            position: absolute;
-            right: 0%;
-            width: 10%;
-            height: 100%;
-            background-color: #2f95f5;
-            display: block;
-        }
-        #tools{
-            position: relative;
-        }
-        #toptools{
-            top: 0%;
-            height: 40px;
-            background-color: rgb(54, 112, 56);
-        }
-        #bottools{
-            top: 90%;
-            width: 90%;
-            position: fixed;
-            height: 50px;
-            background-color: bisque;
-            visibility:hidden;
-        }
-        .marker{
-            position: absolute;
-        }
-
-    </style>
+    <link rel="stylesheet" type="text/css" href="start.css">
 </head>
 <body>
 
@@ -52,7 +15,6 @@
 
     <div id="rightbar">
         <div id=toptools class="tools">
-            <button>new</button>
             <div id="toggleselect">
                 <h3>mouse option</h3>
                 <button>view</button>
@@ -60,7 +22,7 @@
                 <button>edit</button>
             </div>
             <select name="icons" id="icons">
-                <option><img src="map_markers/marker_bullseye.png"></option>
+                <option style="background-image:url(map_markers/marker_bullseye.png)"></option>
             </select>
         </div>
 
@@ -71,8 +33,7 @@
     </div>
     
     <script src=drag.js></script>
-    <script type="text/javascript">
-        dragElement(document.getElementById("mapscreen"));
-    </script>
+    <script>window.$ = window.jQuery = require('jquery');</script>
+    <script src=start.js></script>
 </body>
 </html>

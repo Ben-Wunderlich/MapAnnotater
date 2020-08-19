@@ -2,8 +2,13 @@ const electron = require('electron');
 const url = require('url');
 const path = require('path');
 const fs = require('fs');
+const { type } = require('jquery');
+const { dialog } = require('electron');
 
 const {app, BrowserWindow, Menu, ipcMain} = electron;
+
+//set environment
+//process.env.NODE_ENV = 'production';
 
 let startWindow;
 let addWindow;
@@ -12,7 +17,11 @@ let addWindow;
 app.on('ready', function(){
     //create new wundow
     startWindow = new BrowserWindow({
-        
+        webPreferences:{
+            nodeIntegration: true
+        },
+        width: 1500,
+        height: 800
     });
 
     //load html file into window
@@ -58,16 +67,11 @@ function NewProjectMenu(){
     });
 }
 
-function UrlTaken(url){
-    return true;
-}
-
 //file formats here
 function CreateProjectFiles(items){
     const folderpath = path.join(__dirname,'projects',items[0]);
     const textPath = path.join(folderpath, items[0].concat('.mapan'));
     const imagePath = path.join(folderpath, 'image.jpg');
-    console.log(imagePath);
 
     //making directory
     fs.mkdirSync(folderpath, { recursive: true }, (err) => {
@@ -83,6 +87,7 @@ function CreateProjectFiles(items){
     fs.writeFile(imagePath, items[1], (err) => {
         if(err) throw err;
         console.log('Image Saved!');
+        startWindow.webContents.send('project:open', items[0]);
     });
 
 
@@ -93,6 +98,27 @@ function CreateProjectFiles(items){
     });*/
 }
 
+function chooseProject(){
+    let projectsUrl = path.join(__dirname, 'projects')
+    
+    dialog.showOpenDialog({
+        defaultPath: projectsUrl,
+        properties:["openDirectory"]
+        
+    }).then(result => {
+        let paths = result.filePaths;
+        if(paths.length == 0)
+            return;
+        var justName = paths[0].substring(paths[0].lastIndexOf('\\')+1);
+        startWindow.webContents.send('project:open', justName);
+    })
+
+    /*fs.readdirSync(projectsUrl).forEach(file => {
+        fileNames.push(file)
+    });*/
+
+}
+
 //catch project:add
 //items in form [project_name, image_buffer]
 ipcMain.on('project:add', function(e, items){
@@ -100,9 +126,9 @@ ipcMain.on('project:add', function(e, items){
     newProjectWindow.close();
     //console.log(typeof items[1]);
     CreateProjectFiles(items);
-    //startWindow.webContents.send('project:add', item);
 
-
+    //create proj files is async so need to wait for ie
+    //
 });
 
 const mainMenuTemplate = [
@@ -117,8 +143,11 @@ const mainMenuTemplate = [
             },
         },
         {
-            label:'open recent',
-            accelerator: 'Ctrl+O'
+            label:'open',
+            accelerator: 'Ctrl+O',
+            click(){
+                chooseProject();
+            }
         },
         {
             label:'Quit',
