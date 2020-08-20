@@ -2,12 +2,32 @@ html{
     background-color: #222831;
 }
 
+#welcomeMessage{
+    position: absolute;
+    background-color: #30475e;
+    height: 30%;
+    min-height: 225px;
+    top: 40%;
+    width: 10%;
+    min-width: 100px;
+    left: 45%;
+    padding: 5px;
+    text-align: center;
+}
+
 #mapscreen{
-    width: 90%;
-    height: 100%;
+    /*width: 90%;
+    height: 100%;*/
     float: left;
     position: absolute;
     /*background-image: url('projects/drggg/image.jpg');*/
+}
+
+#mainText{
+    position: relative;
+    top:50px;
+    height: 30%;
+    resize: none;
 }
 
 #rightbar{
@@ -17,6 +37,7 @@ html{
     height: 100%;
     background-color: #30475e;
     display: block;
+    visibility: hidden;
 }
 #tools{
     position: relative;
@@ -32,7 +53,6 @@ html{
     position: fixed;
     height: 50px;
     background-color: #ececec;
-    visibility:hidden;
 }
 .marker{
     position: absolute;

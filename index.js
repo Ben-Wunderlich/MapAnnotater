@@ -2,8 +2,9 @@ const electron = require('electron');
 const url = require('url');
 const path = require('path');
 const fs = require('fs');
-const { type } = require('jquery');
+//const { type } = require('jquery');
 const { dialog } = require('electron');
+const { resolve } = require('dns');
 
 const {app, BrowserWindow, Menu, ipcMain} = electron;
 
@@ -18,7 +19,8 @@ app.on('ready', function(){
     //create new wundow
     startWindow = new BrowserWindow({
         webPreferences:{
-            nodeIntegration: true
+            nodeIntegration: true,
+            enableRemoteModule: true
         },
         width: 1500,
         height: 800
@@ -67,10 +69,22 @@ function NewProjectMenu(){
     });
 }
 
+
+function makeid(length) {
+    var result           = '';
+    var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var charactersLength = characters.length;
+    for ( var i = 0; i < length; i++ ) {
+       result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    return result;
+ }
+
 //file formats here
+//items in form [project_name, image_buffer]
 function CreateProjectFiles(items){
     const folderpath = path.join(__dirname,'projects',items[0]);
-    const textPath = path.join(folderpath, items[0].concat('.mapan'));
+    const textPath = path.join(folderpath, items[0].concat('.json'));
     const imagePath = path.join(folderpath, 'image.jpg');
 
     //making directory
@@ -78,8 +92,14 @@ function CreateProjectFiles(items){
         if (err) throw err;
     });
 
-    //making file
-    fs.writeFile(textPath, imagePath, function (err) {
+    //making json file
+    var jsonObj = {
+            id: makeid(10),
+            title: items[0],
+            imagepath:imagePath,
+            markers:[]
+    }
+    fs.writeFile(textPath, JSON.stringify(jsonObj), function (err) {
         if (err) throw err;
     });
 
@@ -87,7 +107,7 @@ function CreateProjectFiles(items){
     fs.writeFile(imagePath, items[1], (err) => {
         if(err) throw err;
         console.log('Image Saved!');
-        startWindow.webContents.send('project:open', items[0]);
+        startWindow.webContents.send('project:open', [items[0], jsonObj]);
     });
 
 
@@ -96,6 +116,19 @@ function CreateProjectFiles(items){
         if (err) throw err;
         console.log('source was copied to destination.txt');
     });*/
+}
+
+function getJson(projectName){
+    return new Promise(resolve =>{
+
+    const filePath = path.join(__dirname, 'projects', projectName, projectName.concat('.json'));
+        fs.readFile(filePath, (err, data) => {
+            if(err) throw err;
+
+            console.log("The file content is : " + JSON.parse(data));
+            resolve(JSON.parse(data));
+        });
+    });
 }
 
 function chooseProject(){
@@ -110,13 +143,20 @@ function chooseProject(){
         if(paths.length == 0)
             return;
         var justName = paths[0].substring(paths[0].lastIndexOf('\\')+1);
-        startWindow.webContents.send('project:open', justName);
-    })
+        
+        getJson(justName).then(result => {
+            startWindow.webContents.send('project:open', [justName, result]);
+        })
+    });
 
     /*fs.readdirSync(projectsUrl).forEach(file => {
         fileNames.push(file)
     });*/
 
+}
+
+function saveProject(){
+    //XXX
 }
 
 //catch project:add
@@ -147,6 +187,13 @@ const mainMenuTemplate = [
             accelerator: 'Ctrl+O',
             click(){
                 chooseProject();
+            }
+        },
+        {
+            label:'save',
+            accelerator: 'Ctrl+S',
+            click(){
+                saveProject();
             }
         },
         {

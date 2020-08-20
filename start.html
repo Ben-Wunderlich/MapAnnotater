@@ -7,28 +7,38 @@
 <body>
 
     <div id="mapscreen">
-        <img src="map_markers/blue_bull.png" class="marker" style="left: 120px;top:300px;">
-
+    <span id="mapmarkers">
+        <!--<img src="map_markers/blue_bull.png" class="marker" style="left: 120px;top:300px;">-->
+    </span>
     </div>
 
+    <div id="welcomeMessage">
+        <h2>Welcome to Map Annotater</h2>
+        <p id="promptText">
+            press Ctrl+N to make a new project or Ctrl+O to open a previous project
+        </p>
+    </div>
 
+    </div>
 
     <div id="rightbar">
         <div id=toptools class="tools">
             <div id="toggleselect">
                 <h3>mouse option</h3>
-                <button>view</button>
-                <button>add</button>
-                <button>edit</button>
+                <button id='viewMouse'>view</button>
+                <button id='addMouse'>add</button>
+                <button id='editMouse'>edit</button>
             </div>
             <select name="icons" id="icons">
                 <option style="background-image:url(map_markers/marker_bullseye.png)"></option>
             </select>
         </div>
 
+        <textarea id="mainText"></textarea>
+
         <div id=bottools class="tools">
-            <button>save</button>
-            <button>delete</button>
+            <button id="saveText">save</button>
+            <button id="deleteMarker">delete</button>
         </div>
     </div>
     

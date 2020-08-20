@@ -4,23 +4,33 @@ dragElement($('#mapscreen')[0]);
 const electron = require('electron');
 const {ipcRenderer} = electron;
 const dialog = electron.remote.dialog;
-const fs = require('fs');
+var sizeOf = require('image-size');
 
-//ipcRenderer.send('XXX:XXX', [thing1, thing2]);
+//const fs = require('fs');
+
+var projJson;
+var currentMarkerIcon;
+
+//can be view, add or edit
+var mouseMode = "view";
 
 function changeBackgroundImage(url){
     let formatUrl = 'url('+url+')';
     console.log(formatUrl);
-    $('#mapscreen').css('background-image', formatUrl);
-    $('#mapscreen').css('left', '100px');
+    var dimensions = sizeOf(url);
+
+    $('#mapscreen').css({'background-image': formatUrl,
+    'width':dimensions.width, 'height': dimensions.height
+    });
 }
 
-function clearIcons(){
-
-}
 
 function loadIcons(projectName){
-    clearIcons();
+    //clear previous markers
+    $('#mapmarkers').empty();
+
+    //add icons from project
+    //XXX
 }
 
 function loadProject(projectName){
@@ -32,8 +42,27 @@ function loadProject(projectName){
     changeBackgroundImage(imgDir);
 
     //load icons on image
+    loadIcons(projectName);
+    $('#rightbar').css('visibility', 'visible');
+    $('#welcomeMessage').css('visibility', 'hidden');
 }
 
-ipcRenderer.on('project:open', function(e,projName){
-    loadProject(projName)
+//projInfo has [name, json]
+ipcRenderer.on('project:open', function(e,projInfo){
+    loadProject(projInfo[0], projInfo[1])
+    console.log(projInfo[1])
+    console.log("is it json? "+projInfo[1].title);
+    projJson = projInfo[1];
+});
+
+$('#viewMouse').click(function(){
+    mouseMode="view";
+});
+
+$('#addMouse').click(function(){
+    mouseMode="add";
+});
+
+$('#editMouse').click(function(){
+    mouseMode="edit";
 });
