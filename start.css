@@ -37,10 +37,11 @@ html{
     height: 100%;
     background-color: #30475e;
     display: block;
-    visibility: hidden;
+    /*visibility: hidden;*/
 }
-#tools{
+.tools{
     position: relative;
+    z-index: 20;
 }
 #toptools{
     top: 0%;
@@ -56,4 +57,8 @@ html{
 }
 .marker{
     position: absolute;
+}
+
+.currentMarker{
+    background-color: black;
 }
