@@ -14,6 +14,10 @@ const {app, BrowserWindow, Menu, ipcMain} = electron;
 let startWindow;
 let addWindow;
 
+var unsavedWork = false;
+var quitAfterSaving = false;
+
+
 // listen for app to be ready
 app.on('ready', function(){
     //create new wundow
@@ -34,8 +38,29 @@ app.on('ready', function(){
     }));
 
     //quit app when closed
-    startWindow.on('closed', function(){
-        app.quit();
+    startWindow.on('close', function(e){
+        if(unsavedWork){
+            console.log('unsaved work!!!!!')
+            var choice = require('electron').dialog.showMessageBoxSync(this,
+                {
+                  type: 'question',
+                  buttons: ['save and quit', "don't save", 'cancel'],
+                  title: 'Confirm',
+                  message: 'You have unsaved work, do you still want to exit?'
+               });
+               if(choice === 2){//cancel
+                e.preventDefault();
+               }
+               else if(choice === 0){//save and quit
+                    e.preventDefault();
+                    quitAfterSaving = true;
+                    startWindow.webContents.send('project:save');
+               }
+               //for choice 1 if not want to save just donw prevent default
+        }
+        else{
+            app.quit();
+        }
     });
 
     //build menu from template
@@ -71,8 +96,8 @@ function NewProjectMenu(){
 
 
 function makeid(length) {
-    var result           = '';
-    var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var result = '';
+    var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     var charactersLength = characters.length;
     for ( var i = 0; i < length; i++ ) {
        result += characters.charAt(Math.floor(Math.random() * charactersLength));
@@ -124,8 +149,6 @@ function getJson(projectName){
     const filePath = path.join(__dirname, 'projects', projectName, projectName.concat('.json'));
         fs.readFile(filePath, (err, data) => {
             if(err) throw err;
-
-            console.log("The file content is : " + JSON.parse(data));
             resolve(JSON.parse(data));
         });
     });
@@ -155,9 +178,19 @@ function chooseProject(){
 
 }
 
-function saveProject(){
-    //XXX
-}
+//recieves json file from window
+ipcMain.on('project:savefile', function(e, fileContents){
+    jsonPath = path.join(__dirname, 'projects', fileContents.title, fileContents.title.concat('.json'));
+    unsavedWork = false;
+
+    fs.writeFile(jsonPath, JSON.stringify(fileContents), function(err) {
+        if(err) throw err;
+        console.log("The file was saved!");
+    }); 
+    if(quitAfterSaving){
+        app.quit();
+    }
+});
 
 //catch project:add
 //items in form [project_name, image_buffer]
@@ -170,6 +203,10 @@ ipcMain.on('project:add', function(e, items){
     //create proj files is async so need to wait for ie
     //
 });
+
+ipcMain.on('work-unsaved', function(e){
+    unsavedWork = true;
+})
 
 const mainMenuTemplate = [
     {
@@ -193,16 +230,31 @@ const mainMenuTemplate = [
             label:'save',
             accelerator: 'Ctrl+S',
             click(){
-                saveProject();
+                startWindow.webContents.send('project:save');
             }
         },
         {
-            label:'Quit',
-            accelerator:'Ctrl+Q',
-            click(){
-                app.quit();
+            label:'delete current file'
+        }
+        ]
+    },
+    {
+        label: 'edit',
+        submenu: [
+            {
+                label: 'delete selected markers',
+                accelerator: 'Delete',
+                click(){
+                    startWindow.webContents.send('delete:marker');
+                }
+            },
+            {
+                label: 'select all markers',
+                accelerator: 'Ctrl+Shift+A',
+                click(){
+                    startWindow.webContents.send('select:all');
+                }
             }
-        },
         ]
     },
     {
