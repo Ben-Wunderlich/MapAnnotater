@@ -57,7 +57,7 @@ function dragMarker(elmnt, id) {
   elmnt.onmousedown = dragMouseDown;
 
   function dragMouseDown(e) {
-    if (mouseMode !== 'edit'){//XXX see if this works
+    if (mouseMode !== 'edit'){
       return;
     }
     iconBeignDragged = true
@@ -69,8 +69,7 @@ function dragMarker(elmnt, id) {
     // get the mouse cursor position at startup:
     pos3 = e.clientX;
     pos4 = e.clientY;
-    xStore=e.clientX;
-    yStore = e.clientY;
+    
     document.onmouseup = closeDragElement;
     // call a function whenever the cursor moves:
     document.onmousemove = elementDrag;
@@ -85,9 +84,6 @@ function dragMarker(elmnt, id) {
     pos3 = e.clientX;
     pos4 = e.clientY;
 
-    xStore = e.clientX;
-    yStore = e.clientY;
-
     // set the element's new position:
     elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
     elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
@@ -96,9 +92,7 @@ function dragMarker(elmnt, id) {
   function closeDragElement() {
     iconBeignDragged = false;
     // stop moving when mouse button is released:
-    canvasX = parseInt($('#mapscreen').css('left'), 10);
-    canvasY = parseInt($('#mapscreen').css('top'), 10);
-    updateMarkerPos(xStore-canvasX, yStore-canvasY);
+    updateMarkerPos();
     document.onmouseup = null;
     document.onmousemove = null;
   }

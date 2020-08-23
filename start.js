@@ -6,6 +6,8 @@ const {ipcRenderer} = electron;
 var sizeOf = require('image-size');
 
 const fs = require('fs');
+const { title } = require('process');
+const { debug, clear } = require('console');
 
 var projJson;
 
@@ -14,7 +16,7 @@ var markerID;
 
 var currentMarkerIcon;
 
-//can be view, add or edit
+//can be 'view', 'add' or 'edit'
 var mouseMode;
 
 function changeBackgroundImage(url){
@@ -36,18 +38,27 @@ function makeid(length) {
     return result;
  }
 
+ function getEditedIds(){
+     var selectedIds = []
+    $(".editingMarker").each(function() { selectedIds.push($(this).attr('id'))});
+    return selectedIds
+ }
+
  function changeMarkerIcon(newIcon){
-    if(typeof highlightedMarker === 'undefined' || mouseMode !== 'edit'){
+    if($('.editingMarker').length === 0){
         return; 
     }
 
+    var idToBeChanged = getEditedIds();
+
+    $('.editingMarker').attr('src', newIcon);
+
     projJson.markers.forEach(marker =>{
-        if(marker.id === markerID){
+        if(idToBeChanged.includes(marker.id)){
             marker.icon = newIcon;
-            highlightedMarker.setAttribute('src', newIcon);
-            return;
         }
     });
+    ipcRenderer.send('work-unsaved'); 
  }
 
 function makeMarkerOptions(){
@@ -58,6 +69,7 @@ function makeMarkerOptions(){
         newImg.setAttribute('src', file);
         $(newImg).addClass('baseIcon');
         $(newImg).on('click', function(){
+
             currentMarkerIcon = file;
             $('#icons').children().removeClass("currentMarker");
             newImg.classList.add("currentMarker");
@@ -74,13 +86,16 @@ function makeMarkerOptions(){
 }
 
 //used from drag file
-function updateMarkerPos(xPosition, yPosition){
+function updateMarkerPos(){
     const markers = projJson.markers;
+    if($('.editingMarker').length !== 1){
+        throw "MArker position updated without propper number of sleected markers"
+    }
 
     markers.forEach(marker =>{
         if(marker.id === markerID){
-            marker.xPos = xPosition
-            marker.yPos = yPosition
+            marker.xPos = $('.editingMarker').css('left');
+            marker.yPos = $('.editingMarker').css('top');
             return;
         }
     });
@@ -95,19 +110,21 @@ function loadIcons(projectName){
     const markers = projJson.markers;
 
     markers.forEach(marker =>{
-        addMarker(marker.xPos, marker.yPos, marker.id, marker.icon, false);
+        addExistingMarker(marker.xPos, marker.yPos, marker.id, marker.icon)
     });
 }
 
 function loadProject(projectName){
     console.log("now opening ".concat(projectName));
+    ipcRenderer.send('setTitle', projectName);
     $('#rightbar').css('visibility', 'visible');
-    $('#welcomeMessage').remove();
+    $('#welcomeMessage').css('visibility', 'hidden');
 
     const imgDir = 'projects/'+projectName+'/image.jpg'
 
     //load main image
     changeBackgroundImage(imgDir);
+
 
     //reset image position
     $('#mapscreen').css({'top':'0px', 'left':'0px'})
@@ -116,7 +133,7 @@ function loadProject(projectName){
     loadIcons(projectName);
 }
 
-function addMarker(currX, currY, id=null, icon=null, makeNew=true){
+function addNewMarker(currX, currY){
     const halfImgWIdth = 12;
 
     canvasX = parseInt($('#mapscreen').css('left'), 10);
@@ -125,33 +142,32 @@ function addMarker(currX, currY, id=null, icon=null, makeNew=true){
     practicalX = currX-halfImgWIdth-canvasX;
     practicalY = currY-halfImgWIdth-canvasY;
 
-    var newMarker = document.createElement("IMG");
+    var id = makeid(12);
 
-    if(id === null){
-        id = makeid(12);
-    }
+    var icon = currentMarkerIcon;
+    addJsonMarker(practicalX, practicalY, id);
 
-    if(icon === null){
-        icon = currentMarkerIcon;
-    }
+    var markerElement = addExistingMarker(practicalX, practicalY, id, icon)
 
-    $(newMarker).attr('src', icon).css({
-        'left': practicalX+'px',
-        'top': practicalY+'px',
+    highlightMarker(markerElement, id);
+}
+
+function addExistingMarker(fromLeft, fromTop, id, icon){
+    var markerElement = document.createElement("IMG");
+
+    $(markerElement).attr('src', icon).css({
+        'left': fromLeft,
+        'top': fromTop,
         'position':'absolute'
     }).attr('id', id).addClass('marker');
 
-    dragMarker(newMarker, id);
+    dragMarker(markerElement, id);
 
-    $('#mapmarkers').append(newMarker);
-
-    if(makeNew){
-        addJsonMarker(practicalX+halfImgWIdth, practicalY+halfImgWIdth, id);
-        highlightMarker(newMarker, id);
-    }
+    $('#mapmarkers').append(markerElement);
+    return markerElement;
 }
 
-function highlightMarker(elmnt, elmntID, ){
+function highlightMarker(elmnt, elmntID){
     var icon = $(elmnt).attr('src');
 
     $('.marker').removeClass('editingMarker');
@@ -159,6 +175,7 @@ function highlightMarker(elmnt, elmntID, ){
     setMarkerText(elmnt, elmntID);
     highlightedMarker = elmnt;
     markerID = elmntID;
+    $("#titleAndText").css('visibility', 'visible');
 
     $("img[src$='"+icon+"']").filter(".baseIcon").trigger('click');
 
@@ -172,35 +189,41 @@ function deselectMarker(){
     clearText();
     highlightedMarker = undefined;
     markerID = undefined;
+    $("#titleAndText").css('visibility', 'hidden')
 }
 
 function selectAllMarkers(){
     $('.marker').addClass('editingMarker');
 }
 
-function setMarkerText(elmnt, elementID){ 
+function setMarkerText(elmnt, elementID){
+    $('#titleAndText').css("visiblity", 'visible');
+
     projJson.markers.forEach(marker => {
         if(marker.id === elementID){
             if(highlightedMarker === elmnt){
                 return;//is already there
             }
             $('#mainText').val(marker.note);
+            $('#textTitle').val(marker.noteTitle);
             return;
         }
     });
 }
 
 function saveMarkerText(){
-    if(typeof highlightedMarker === 'undefined'){
+    if($('.editingMarker').length === 0){
         return;
     }
 
     var textToBeSaved = $('#mainText').val();
+    var titleToBeSaved = $('#textTitle').val();
 
     projJson.markers.forEach(marker => {
         if(marker.id === markerID){
             ipcRenderer.send('work-unsaved');
             marker.note = textToBeSaved;
+            marker.noteTitle = titleToBeSaved;
             return;
         }
     });
@@ -208,6 +231,7 @@ function saveMarkerText(){
 
 function clearText(){
     $('#mainText').val("");
+    $('#titleText').val("");
 }
 
 function deleteMarker(){
@@ -216,11 +240,9 @@ function deleteMarker(){
     }
     clearText();
 
-    var idToBeDeleted = [];
-    $(".editingMarker").each(function() { idToBeDeleted.push($(this).attr('id'))});
+    var idToBeDeleted = getEditedIds();
     console.log("about to delete "+idToBeDeleted);
 
-    var i = 0
     var remainingMarkers=[];
     for (marker of projJson.markers){
         if(!idToBeDeleted.includes(marker.id)){//if shouldnt be deleted
@@ -234,12 +256,28 @@ function deleteMarker(){
     $(".editingMarker").remove();
 }
 
+//resets the window to be blank
+function projectReset(){
+    ipcRenderer.send('setTitle', 'Map Annotater');
+    $('#rightbar').css('visibility', 'hidden');
+    $('#welcomeMessage').css('visibility', 'visible');
+
+    //XXX
+    clearText()
+
+    $("#mapscreen").removeAttr('style');
+
+    $('#mapmarkers').empty();
+    //loadIcons(projectName);
+}
+
 function addJsonMarker(xPosition, yPosition, markerID){
     var newMarker = {
         id:markerID,
         icon: currentMarkerIcon,
         xPos: xPosition,
         yPos: yPosition,
+        noteTitle: '',
         note: ''
     }
     projJson.markers.push(newMarker)
@@ -247,7 +285,6 @@ function addJsonMarker(xPosition, yPosition, markerID){
 }
 
 function windowReset(){
-    console.log("all reset");
     mouseMode = 'view';
     clearText();
     //this will need more stuff as it goes
@@ -263,12 +300,17 @@ ipcRenderer.on('project:open', function(e,projInfo){
 //responds to save request from client
 ipcRenderer.on('project:save', function(e){
     saveMarkerText();
+    console.log('jsonis '+ projJson);
     if(typeof projJson !== 'undefined'){
         ipcRenderer.send('project:savefile', projJson);
     }
     else{
         console.log("no file to save");
     }
+});
+
+ipcRenderer.on('project:delete', function(e){
+    projectReset();
 });
 
 ipcRenderer.on('delete:marker', function(e){
@@ -303,12 +345,16 @@ $('.marker').on('click', function(event){
     event.preventDefault();
 });
 
+$('#mainText').bind('input propertychange', function() {
+    ipcRenderer.send('work-unsaved'); 
+});
+
 
 
 $('#mapscreen').click(function(e){
     switch (mouseMode) {
         case 'add': 
-            addMarker(e.clientX, e.clientY);
+            addNewMarker(e.clientX, e.clientY);
             break;
         case 'view':
             break;

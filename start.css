@@ -25,10 +25,20 @@ html{
 
 #mainText{
     position: relative;
-    top:75px;
-    height: 30%;
+    height: 80%;
     resize: none;
 }
+
+#titleAndText{
+    position: relative;
+    top: 60px;
+    visibility: hidden;
+}
+
+#noteTitle{
+    
+}
+
 
 #rightbar{
     position: absolute;
@@ -45,11 +55,13 @@ html{
     z-index: 20;
 }
 #toptools{
+    position: relative;
     top: 0%;
     height: 40px;
     background-color: #f2a365;
 }
 #bottools{
+    position: relative;
     top: 90%;
     width: 90%;
     position: fixed;

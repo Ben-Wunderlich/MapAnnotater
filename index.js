@@ -13,6 +13,7 @@ const {app, BrowserWindow, Menu, ipcMain} = electron;
 
 let startWindow;
 let addWindow;
+let currentProjectTitle
 
 var unsavedWork = false;
 var quitAfterSaving = false;
@@ -41,7 +42,7 @@ app.on('ready', function(){
     startWindow.on('close', function(e){
         if(unsavedWork){
             console.log('unsaved work!!!!!')
-            var choice = require('electron').dialog.showMessageBoxSync(this,
+            var choice = dialog.showMessageBoxSync(this,
                 {
                   type: 'question',
                   buttons: ['save and quit', "don't save", 'cancel'],
@@ -74,7 +75,8 @@ function NewProjectMenu(){
     newProjectWindow = new BrowserWindow({
         webPreferences: {
             nodeIntegration: true,
-            safeDialogs: true
+            safeDialogs: true,
+            enableRemoteModule: true
         },
         width: 400,
         height: 300,
@@ -121,13 +123,13 @@ function CreateProjectFiles(items){
     var jsonObj = {
             id: makeid(10),
             title: items[0],
-            imagepath:imagePath,
             markers:[]
     }
     fs.writeFile(textPath, JSON.stringify(jsonObj), function (err) {
         if (err) throw err;
     });
 
+    currentProjectTitle = items[0];
     //create image file
     fs.writeFile(imagePath, items[1], (err) => {
         if(err) throw err;
@@ -166,7 +168,8 @@ function chooseProject(){
         if(paths.length == 0)
             return;
         var justName = paths[0].substring(paths[0].lastIndexOf('\\')+1);
-        
+        currentProjectTitle = justName;
+
         getJson(justName).then(result => {
             startWindow.webContents.send('project:open', [justName, result]);
         })
@@ -175,13 +178,53 @@ function chooseProject(){
     /*fs.readdirSync(projectsUrl).forEach(file => {
         fileNames.push(file)
     });*/
-
 }
+
+
+function deleteVerify(){//XXX
+    var choice = dialog.showMessageBoxSync(
+        {
+          type: 'question',
+          buttons: ['delete project', 'maybe not', 'cancel'],
+          title: 'Confirm',
+          message: 'Are you sure you want to delete the project "'+currentProjectTitle+'"?'
+       });
+    if(choice === 0){//cancel
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+function deleteProjectFiles(){
+    var folderPath = path.join(__dirname, 'projects', currentProjectTitle); 
+
+    fs.rmdir(folderPath, { recursive: true }, (err) => {
+        if (err) {
+            throw err;
+        }
+    
+        console.log(currentProjectTitle +' is deleted!');
+    });
+
+    currentProjectTitle = undefined;
+    //at end
+}
+
+/*var choice = dialog.showMessageBoxSync(this,
+    {
+      type: 'question',
+      buttons: ['save and quit', "don't save", 'cancel'],
+      title: 'Confirm',
+      message: 'You have unsaved work, do you still want to exit?'
+   });*/
 
 //recieves json file from window
 ipcMain.on('project:savefile', function(e, fileContents){
     jsonPath = path.join(__dirname, 'projects', fileContents.title, fileContents.title.concat('.json'));
     unsavedWork = false;
+    startWindow.setTitle(currentProjectTitle);
 
     fs.writeFile(jsonPath, JSON.stringify(fileContents), function(err) {
         if(err) throw err;
@@ -204,8 +247,13 @@ ipcMain.on('project:add', function(e, items){
     //
 });
 
-ipcMain.on('work-unsaved', function(e){
+ipcMain.on('setTitle', function(e, newTitle){
+    startWindow.setTitle(newTitle);
+})
+
+ipcMain.on('work-unsaved', function(e, Truem){
     unsavedWork = true;
+    startWindow.setTitle(currentProjectTitle+"*");
 })
 
 const mainMenuTemplate = [
@@ -234,7 +282,22 @@ const mainMenuTemplate = [
             }
         },
         {
-            label:'delete current file'
+            label:'delete current project',
+            click(){
+                if(typeof currentProjectTitle === 'undefined'){
+                    console.log('no project to delete');
+                    return;
+                }   
+                if(deleteVerify()){
+                    console.log("deleteing current project")
+
+                    //clear screen
+                    startWindow.webContents.send('project:delete');
+
+                    //delete files
+                    deleteProjectFiles();
+                }
+            }
         }
         ]
     },
@@ -254,7 +317,8 @@ const mainMenuTemplate = [
                 click(){
                     startWindow.webContents.send('select:all');
                 }
-            }
+            },
+            
         ]
     },
     {
