@@ -212,6 +212,11 @@ function deleteProjectFiles(){
     //at end
 }
 
+function setRedo(isEnabled){
+    var menuItem = Menu.getApplicationMenu().getMenuItemById('redoMenuItem');
+    menuItem.enabled = isEnabled;
+}
+
 /*var choice = dialog.showMessageBoxSync(this,
     {
       type: 'question',
@@ -233,6 +238,10 @@ ipcMain.on('project:savefile', function(e, fileContents){
     if(quitAfterSaving){
         app.quit();
     }
+});
+
+ipcMain.on('change:redo', function(e, isEnabled){
+    setRedo(isEnabled);
 });
 
 //catch project:add
@@ -318,6 +327,18 @@ const mainMenuTemplate = [
                     startWindow.webContents.send('select:all');
                 }
             },
+            {
+                label: 'undo',
+                accelerator: 'Ctrl+Z',
+                click(){
+                    startWindow.webContents.send('undo:step');
+                }
+            },
+            {
+                label: 'redo',
+                id: 'redoMenuItem',
+                accelerator: 'Ctrl+Y'
+            }
             
         ]
     },

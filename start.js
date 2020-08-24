@@ -16,6 +16,12 @@ var markerID;
 
 var currentMarkerIcon;
 
+//holds marker json whenever is saved,
+//when undo is pressed delete marker and remake
+const maxStackCapacity = 5;
+var operationStack=[];
+var redoStack = [];
+
 //can be 'view', 'add' or 'edit'
 var mouseMode;
 
@@ -26,6 +32,58 @@ function changeBackgroundImage(url){
     $('#mapscreen').css({'background-image': formatUrl,
     'width':dimensions.width, 'height': dimensions.height
     });
+}
+
+function newChanges(){
+    updateOperationStack();
+    ipcRenderer.send('work-unsaved');
+}
+
+
+function undoStep(){
+    if(operationStack.length === 0){
+        console.log('no operation to undo');
+        return;
+    }
+    console.log("undoing steps");
+    var currentJson = operationStack.pop();//since would have just been saved
+    var lastJson = operationStack.pop();
+    redoStack.push(JSON.parse(JSON.stringify(currentJson)));//push current progress before overwriting it, could also use projJson
+    remakeMarkers(lastJson);
+}
+
+function redoStep(){
+    //XXX do this at some point
+    redoSnapshot = redoStack.pop();//dont need to check size because relies on operationstack 
+}
+
+//change json to previous version and update page
+function remakeMarkers(previousSnapshot){//XXX many things could go wring here
+    console.log("remaking markers");
+
+    deselectMarker();
+    projJson = previousSnapshot;
+    //console.log(projJson);
+    //XXX delete current markers and change to previousSnapshot
+    $("#mapmarkers").empty();
+
+    for (marker of projJson.markers){
+        addExistingMarker(marker.xPos, marker.yPos, marker.id, marker.icon);
+    }
+    console.log('saving from remake markers');
+    newChanges();
+}
+
+function updateOperationStack(){
+    console.log('saving');
+    redoStack=[];//if would try to redo after changes, changes would be lost
+    if(operationStack.length >= maxStackCapacity){
+        console.log("shifting");
+        operationStack.shift();
+    }
+    var deepCopy = JSON.parse(JSON.stringify(projJson));
+    
+    operationStack.push(deepCopy);
 }
 
 function makeid(length) {
@@ -58,28 +116,33 @@ function makeid(length) {
             marker.icon = newIcon;
         }
     });
-    ipcRenderer.send('work-unsaved'); 
+    console.log('saving from change marker icon, newicon is, '+newIcon);//XXX WHY IS IT CHANGING FROM HERE
+    newChanges();
  }
 
 function makeMarkerOptions(){
-    highLighted = false;
+    var highLighted = false;//so just one gets highlighted
     fs.readdirSync('map_markers\\').forEach(file => {
-        file = 'map_markers/'.concat(file);
+        var markerFile = 'map_markers/'.concat(file);
         var newImg = document.createElement("IMG");
-        newImg.setAttribute('src', file);
+        newImg.setAttribute('src', markerFile);
         $(newImg).addClass('baseIcon');
+        
         $(newImg).on('click', function(){
-
-            currentMarkerIcon = file;
+            if(currentMarkerIcon === markerFile){
+                return;
+            }
+            currentMarkerIcon = markerFile;
             $('#icons').children().removeClass("currentMarker");
             newImg.classList.add("currentMarker");
-
-            changeMarkerIcon(file);
+            console.log(newImg.classList)
+            changeMarkerIcon(markerFile);
         });
+        
         $('#icons').append(newImg);
         if(!highLighted){
             $(newImg).addClass('currentMarker');
-            currentMarkerIcon = file;
+            currentMarkerIcon = markerFile;
             highLighted=true;
         }
     });
@@ -89,13 +152,21 @@ function makeMarkerOptions(){
 function updateMarkerPos(){
     const markers = projJson.markers;
     if($('.editingMarker').length !== 1){
-        throw "MArker position updated without propper number of sleected markers"
+        throw "Marker position updated without propper number of sleected markers"
     }
+
+    var fromLeft = $('.editingMarker').css('left');
+    var fromTop = $('.editingMarker').css('top');
 
     markers.forEach(marker =>{
         if(marker.id === markerID){
-            marker.xPos = $('.editingMarker').css('left');
-            marker.yPos = $('.editingMarker').css('top');
+            if(marker.xPos === fromLeft && marker.yPos === fromTop){
+                return;
+            }
+            marker.xPos = fromLeft;
+            marker.yPos = fromTop;
+            console.log('called from position update')
+            newChanges();
             return;
         }
     });
@@ -131,9 +202,11 @@ function loadProject(projectName){
 
     //load icons on image
     loadIcons(projectName);
+    updateOperationStack();
 }
 
 function addNewMarker(currX, currY){
+    ipcRenderer.send('change:redo', true);
     const halfImgWIdth = 12;
 
     canvasX = parseInt($('#mapscreen').css('left'), 10);
@@ -169,6 +242,7 @@ function addExistingMarker(fromLeft, fromTop, id, icon){
 
 function highlightMarker(elmnt, elmntID){
     var icon = $(elmnt).attr('src');
+    saveMarkerText();
 
     $('.marker').removeClass('editingMarker');
     $(elmnt).addClass('editingMarker');
@@ -177,7 +251,7 @@ function highlightMarker(elmnt, elmntID){
     markerID = elmntID;
     $("#titleAndText").css('visibility', 'visible');
 
-    $("img[src$='"+icon+"']").filter(".baseIcon").trigger('click');
+    $("img[src$='"+icon+"']").filter(".baseIcon").trigger('click');//XXX here it is!!!
 
 }
 
@@ -185,6 +259,7 @@ function highlightMarker(elmnt, elmntID){
 
 //called from drag.js
 function deselectMarker(){
+    saveMarkerText();
     $('.marker').removeClass('editingMarker');
     clearText();
     highlightedMarker = undefined;
@@ -205,7 +280,7 @@ function setMarkerText(elmnt, elementID){
                 return;//is already there
             }
             $('#mainText').val(marker.note);
-            $('#textTitle').val(marker.noteTitle);
+            $('#titleText').val(marker.title);
             return;
         }
     });
@@ -217,13 +292,20 @@ function saveMarkerText(){
     }
 
     var textToBeSaved = $('#mainText').val();
-    var titleToBeSaved = $('#textTitle').val();
+    var titleToBeSaved = $('#titleText').val();
 
     projJson.markers.forEach(marker => {
         if(marker.id === markerID){
-            ipcRenderer.send('work-unsaved');
+            if(marker.note === textToBeSaved && marker.title === titleToBeSaved){
+                console.log("no change");
+                return;
+            }
+
+
+            console.log('saving marker text changes');
+            newChanges();
             marker.note = textToBeSaved;
-            marker.noteTitle = titleToBeSaved;
+            marker.title = titleToBeSaved;
             return;
         }
     });
@@ -247,12 +329,11 @@ function deleteMarker(){
     for (marker of projJson.markers){
         if(!idToBeDeleted.includes(marker.id)){//if shouldnt be deleted
             remainingMarkers.push(marker);
-            //kept going wrong
-            //projJson.markers = markers.slice(0,index).concat(markers.slice(index+1, markers.length));
         }
     }
     projJson.markers = remainingMarkers;
-    ipcRenderer.send('work-unsaved');
+    console.log('saving gtom delete');
+    newChanges();
     $(".editingMarker").remove();
 }
 
@@ -272,16 +353,17 @@ function projectReset(){
 }
 
 function addJsonMarker(xPosition, yPosition, markerID){
-    var newMarker = {
+    var newMarker = {//XXX keeps not addint title
         id:markerID,
         icon: currentMarkerIcon,
         xPos: xPosition,
         yPos: yPosition,
-        noteTitle: '',
+        title: '',
         note: ''
     }
-    projJson.markers.push(newMarker)
-    ipcRenderer.send('work-unsaved');
+    projJson.markers.push(newMarker);
+    console.log('saving gtom add json');
+    newChanges();
 }
 
 function windowReset(){
@@ -300,7 +382,6 @@ ipcRenderer.on('project:open', function(e,projInfo){
 //responds to save request from client
 ipcRenderer.on('project:save', function(e){
     saveMarkerText();
-    console.log('jsonis '+ projJson);
     if(typeof projJson !== 'undefined'){
         ipcRenderer.send('project:savefile', projJson);
     }
@@ -319,6 +400,10 @@ ipcRenderer.on('delete:marker', function(e){
 
 ipcRenderer.on('select:all', function(e){
     selectAllMarkers();
+});
+
+ipcRenderer.on('undo:step', function(e){
+    undoStep();
 });
 
 $('#saveText').on('click', function(){
@@ -346,7 +431,7 @@ $('.marker').on('click', function(event){
 });
 
 $('#mainText').bind('input propertychange', function() {
-    ipcRenderer.send('work-unsaved'); 
+    ipcRenderer.send('work-unsaved');
 });
 
 
