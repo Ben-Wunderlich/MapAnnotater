@@ -12,6 +12,7 @@ function dragElement(elmnt) {
   function dragMouseDown(e) {
     if(mouseMode === 'edit'){
       if(!iconBeignDragged){
+        saveMarkerText();
         deselectMarker();
       }
       return;
@@ -32,7 +33,7 @@ function dragElement(elmnt) {
 
   function elementDrag(e) {
     e = e || window.event;
-    //e.preventDefault();
+    e.preventDefault();
     // calculate the new cursor position:
     pos1 = pos3 - e.clientX;
     pos2 = pos4 - e.clientY;
@@ -53,16 +54,16 @@ function dragElement(elmnt) {
 dragElement($('#mapscreen')[0]);
 
 function dragMarker(elmnt, id) {
-  var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0, xStore=0, yStore=0;
+  var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
   elmnt.onmousedown = dragMouseDown;
 
   function dragMouseDown(e) {
     if (mouseMode !== 'edit'){
       return;
     }
-    iconBeignDragged = true
+    iconBeignDragged = true;
     highlightMarker(elmnt, id);
-    e.preventDefault();
+    e.preventDefault();//otherwise dragging has wierd interaction
 
     e = e || window.event;
     //e.preventDefault();

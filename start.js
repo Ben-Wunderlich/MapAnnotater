@@ -18,7 +18,7 @@ var currentMarkerIcon;
 
 //holds marker json whenever is saved,
 //when undo is pressed delete marker and remake
-const maxStackCapacity = 5;
+const maxStackCapacity = 10;
 var operationStack=[];
 var redoStack = [];
 
@@ -41,36 +41,34 @@ function newChanges(){
 
 
 function undoStep(){
-    if(operationStack.length === 0){
+    if(operationStack.length <= 1){
         console.log('no operation to undo');
         return;
     }
     console.log("undoing steps");
     var currentJson = operationStack.pop();//since would have just been saved
     var lastJson = operationStack.pop();
-    redoStack.push(JSON.parse(JSON.stringify(currentJson)));//push current progress before overwriting it, could also use projJson
+    redoStack.push(currentJson);//push current progress before overwriting it, could also use projJson
     remakeMarkers(lastJson);
 }
 
 function redoStep(){
     //XXX do this at some point
     redoSnapshot = redoStack.pop();//dont need to check size because relies on operationstack 
+    //maybe need to do double pop, will have to check that
 }
 
 //change json to previous version and update page
-function remakeMarkers(previousSnapshot){//XXX many things could go wring here
-    console.log("remaking markers");
-
+function remakeMarkers(previousSnapshot){
     deselectMarker();
     projJson = previousSnapshot;
     //console.log(projJson);
-    //XXX delete current markers and change to previousSnapshot
+    //delete current markers and change to previousSnapshot
     $("#mapmarkers").empty();
 
     for (marker of projJson.markers){
         addExistingMarker(marker.xPos, marker.yPos, marker.id, marker.icon);
     }
-    console.log('saving from remake markers');
     newChanges();
 }
 
@@ -78,11 +76,10 @@ function updateOperationStack(){
     console.log('saving');
     redoStack=[];//if would try to redo after changes, changes would be lost
     if(operationStack.length >= maxStackCapacity){
-        console.log("shifting");
         operationStack.shift();
     }
     var deepCopy = JSON.parse(JSON.stringify(projJson));
-    
+
     operationStack.push(deepCopy);
 }
 
@@ -116,7 +113,6 @@ function makeid(length) {
             marker.icon = newIcon;
         }
     });
-    console.log('saving from change marker icon, newicon is, '+newIcon);//XXX WHY IS IT CHANGING FROM HERE
     newChanges();
  }
 
@@ -135,7 +131,6 @@ function makeMarkerOptions(){
             currentMarkerIcon = markerFile;
             $('#icons').children().removeClass("currentMarker");
             newImg.classList.add("currentMarker");
-            console.log(newImg.classList)
             changeMarkerIcon(markerFile);
         });
         
@@ -165,7 +160,6 @@ function updateMarkerPos(){
             }
             marker.xPos = fromLeft;
             marker.yPos = fromTop;
-            console.log('called from position update')
             newChanges();
             return;
         }
@@ -185,11 +179,12 @@ function loadIcons(projectName){
     });
 }
 
-function loadProject(projectName){
+function loadProject(projectName){//XXX1
     console.log("now opening ".concat(projectName));
     ipcRenderer.send('setTitle', projectName);
     $('#rightbar').css('visibility', 'visible');
     $('#welcomeMessage').css('visibility', 'hidden');
+    $("#titleAndText").css('visibility', 'hidden')
 
     const imgDir = 'projects/'+projectName+'/image.jpg'
 
@@ -259,7 +254,6 @@ function highlightMarker(elmnt, elmntID){
 
 //called from drag.js
 function deselectMarker(){
-    saveMarkerText();
     $('.marker').removeClass('editingMarker');
     clearText();
     highlightedMarker = undefined;
@@ -301,11 +295,10 @@ function saveMarkerText(){
                 return;
             }
 
-
-            console.log('saving marker text changes');
-            newChanges();
+            console.log("saving marker text change");
             marker.note = textToBeSaved;
             marker.title = titleToBeSaved;
+            newChanges();   
             return;
         }
     });
@@ -332,7 +325,6 @@ function deleteMarker(){
         }
     }
     projJson.markers = remainingMarkers;
-    console.log('saving gtom delete');
     newChanges();
     $(".editingMarker").remove();
 }
@@ -362,7 +354,6 @@ function addJsonMarker(xPosition, yPosition, markerID){
         note: ''
     }
     projJson.markers.push(newMarker);
-    console.log('saving gtom add json');
     newChanges();
 }
 
@@ -402,9 +393,26 @@ ipcRenderer.on('select:all', function(e){
     selectAllMarkers();
 });
 
-ipcRenderer.on('undo:step', function(e){
+
+var ctrlDown = false;
+var ctrlKey = 17, zKey = 90;
+
+document.body.onkeydown = function(e) {
+  if (e.keyCode == ctrlKey) {
+    ctrlDown = true;
+  }
+  if (ctrlDown && e.keyCode == zKey){
+    e.preventDefault();
+    saveMarkerText();
     undoStep();
-});
+    return false;
+  }
+}
+document.body.onkeyup = function(e) {
+  if (e.keyCode == ctrlKey) {
+    ctrlDown = false;
+  };
+};
 
 $('#saveText').on('click', function(){
     saveMarkerText();

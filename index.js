@@ -41,7 +41,6 @@ app.on('ready', function(){
     //quit app when closed
     startWindow.on('close', function(e){
         if(unsavedWork){
-            console.log('unsaved work!!!!!')
             var choice = dialog.showMessageBoxSync(this,
                 {
                   type: 'question',
@@ -181,7 +180,7 @@ function chooseProject(){
 }
 
 
-function deleteVerify(){//XXX
+function deleteVerify(){
     var choice = dialog.showMessageBoxSync(
         {
           type: 'question',
@@ -294,7 +293,6 @@ const mainMenuTemplate = [
             label:'delete current project',
             click(){
                 if(typeof currentProjectTitle === 'undefined'){
-                    console.log('no project to delete');
                     return;
                 }   
                 if(deleteVerify()){
@@ -330,14 +328,14 @@ const mainMenuTemplate = [
             {
                 label: 'undo',
                 accelerator: 'Ctrl+Z',
-                click(){
-                    startWindow.webContents.send('undo:step');
-                }
             },
             {
                 label: 'redo',
                 id: 'redoMenuItem',
-                accelerator: 'Ctrl+Y'
+                accelerator: 'Ctrl+Y',
+                click(){
+                    startWindow.webContents.send('redo:step');
+                }
             }
             
         ]
