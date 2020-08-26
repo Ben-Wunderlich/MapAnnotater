@@ -8,6 +8,7 @@ var sizeOf = require('image-size');
 const fs = require('fs');
 const { title } = require('process');
 const { debug, clear } = require('console');
+const { type } = require('jquery');
 
 var projJson;
 
@@ -16,11 +17,16 @@ var markerID;
 
 var currentMarkerIcon;
 
+const defaultImgSize = 24;
+const minImgSize = 5;
+const maxImgSize = 300;
+
 //holds marker json whenever is saved,
 //when undo is pressed delete marker and remake
 const maxStackCapacity = 10;
 var operationStack=[];
 var redoStack = [];
+
 
 //can be 'view', 'add' or 'edit'
 var mouseMode;
@@ -34,8 +40,8 @@ function changeBackgroundImage(url){
     });
 }
 
-function newChanges(){
-    updateOperationStack();
+function newChanges(clearStack=true){
+    updateOperationStack(clearStack);
     ipcRenderer.send('work-unsaved');
 }
 
@@ -53,9 +59,15 @@ function undoStep(){
 }
 
 function redoStep(){
-    //XXX do this at some point
-    redoSnapshot = redoStack.pop();//dont need to check size because relies on operationstack 
+    if(redoStack.length === 0){
+        console.log('no step to redo');
+        return;
+    }
+
+    console.log('redoing step');
+    var redoSnapshot = redoStack.pop();//dont need to check size because relies on operationstack 
     //maybe need to do double pop, will have to check that
+    remakeMarkers(redoSnapshot);
 }
 
 //change json to previous version and update page
@@ -67,14 +79,16 @@ function remakeMarkers(previousSnapshot){
     $("#mapmarkers").empty();
 
     for (marker of projJson.markers){
-        addExistingMarker(marker.xPos, marker.yPos, marker.id, marker.icon);
+        addExistingMarker(marker.xPos, marker.yPos, marker.id, marker.icon, marker.iconSize);
     }
-    newChanges();
+    newChanges(false);
 }
 
-function updateOperationStack(){
+function updateOperationStack(clearRedo=true){
     console.log('saving');
-    redoStack=[];//if would try to redo after changes, changes would be lost
+    if(clearRedo){
+        redoStack=[];//if would try to redo after changes, changes would be lost
+    }
     if(operationStack.length >= maxStackCapacity){
         operationStack.shift();
     }
@@ -97,7 +111,7 @@ function makeid(length) {
      var selectedIds = []
     $(".editingMarker").each(function() { selectedIds.push($(this).attr('id'))});
     return selectedIds
- }
+}
 
  function changeMarkerIcon(newIcon){
     if($('.editingMarker').length === 0){
@@ -122,7 +136,7 @@ function makeMarkerOptions(){
         var markerFile = 'map_markers/'.concat(file);
         var newImg = document.createElement("IMG");
         newImg.setAttribute('src', markerFile);
-        $(newImg).addClass('baseIcon');
+        $(newImg).addClass('baseIcon').height(defaultImgSize).width(defaultImgSize);
         
         $(newImg).on('click', function(){
             if(currentMarkerIcon === markerFile){
@@ -174,8 +188,10 @@ function loadIcons(projectName){
     //add icons from project
     const markers = projJson.markers;
 
+    //XXX add thing for icon size
+
     markers.forEach(marker =>{
-        addExistingMarker(marker.xPos, marker.yPos, marker.id, marker.icon)
+        addExistingMarker(marker.xPos, marker.yPos, marker.id, marker.icon, marker.iconSize)
     });
 }
 
@@ -184,7 +200,8 @@ function loadProject(projectName){//XXX1
     ipcRenderer.send('setTitle', projectName);
     $('#rightbar').css('visibility', 'visible');
     $('#welcomeMessage').css('visibility', 'hidden');
-    $("#titleAndText").css('visibility', 'hidden')
+    $("#titleAndText").css('visibility', 'hidden');
+    $("#sizeAdjustor").css('visibility', 'hidden');
 
     const imgDir = 'projects/'+projectName+'/image.jpg'
 
@@ -202,32 +219,39 @@ function loadProject(projectName){//XXX1
 
 function addNewMarker(currX, currY){
     ipcRenderer.send('change:redo', true);
-    const halfImgWIdth = 12;
+    var imgWidth = parseInt($('#iconResizeInput').val());
+    var halfImgWidth;
+    if(isNaN(imgWidth)){
+        halfImgWidth = defaultImgSize / 2;
+    }
+    else{
+        halfImgWidth = Math.round(imgWidth / 2);
+    }
 
     canvasX = parseInt($('#mapscreen').css('left'), 10);
     canvasY = parseInt($('#mapscreen').css('top'), 10);
 
-    practicalX = currX-halfImgWIdth-canvasX;
-    practicalY = currY-halfImgWIdth-canvasY;
+    practicalX = currX-halfImgWidth-canvasX;
+    practicalY = currY-halfImgWidth-canvasY;
 
     var id = makeid(12);
 
     var icon = currentMarkerIcon;
-    addJsonMarker(practicalX, practicalY, id);
+    addJsonMarker(practicalX, practicalY, id, halfImgWidth*2);
 
-    var markerElement = addExistingMarker(practicalX, practicalY, id, icon)
+    var markerElement = addExistingMarker(practicalX, practicalY, id, icon, halfImgWidth*2)
 
     highlightMarker(markerElement, id);
 }
 
-function addExistingMarker(fromLeft, fromTop, id, icon){
+function addExistingMarker(fromLeft, fromTop, id, icon, iconSize){
     var markerElement = document.createElement("IMG");
 
     $(markerElement).attr('src', icon).css({
         'left': fromLeft,
         'top': fromTop,
         'position':'absolute'
-    }).attr('id', id).addClass('marker');
+    }).attr('id', id).addClass('marker').width(iconSize).height(iconSize);
 
     dragMarker(markerElement, id);
 
@@ -258,7 +282,8 @@ function deselectMarker(){
     clearText();
     highlightedMarker = undefined;
     markerID = undefined;
-    $("#titleAndText").css('visibility', 'hidden')
+    $("#titleAndText").css('visibility', 'hidden');
+    $("#sizeAdjustor").css('visibility', 'hidden');
 }
 
 function selectAllMarkers(){
@@ -267,6 +292,7 @@ function selectAllMarkers(){
 
 function setMarkerText(elmnt, elementID){
     $('#titleAndText').css("visiblity", 'visible');
+    $("#sizeAdjustor").css('visibility', 'visible');
 
     projJson.markers.forEach(marker => {
         if(marker.id === elementID){
@@ -275,6 +301,7 @@ function setMarkerText(elmnt, elementID){
             }
             $('#mainText').val(marker.note);
             $('#titleText').val(marker.title);
+            $('#iconResizeInput').val(marker.iconSize);
             return;
         }
     });
@@ -287,10 +314,13 @@ function saveMarkerText(){
 
     var textToBeSaved = $('#mainText').val();
     var titleToBeSaved = $('#titleText').val();
+    var iconSizeToSave = $('#iconResizeInput').val();
 
     projJson.markers.forEach(marker => {
         if(marker.id === markerID){
-            if(marker.note === textToBeSaved && marker.title === titleToBeSaved){
+            if(marker.note === textToBeSaved &&
+            marker.title === titleToBeSaved && 
+            iconSizeToSave == marker.iconSize){
                 console.log("no change");
                 return;
             }
@@ -298,6 +328,7 @@ function saveMarkerText(){
             console.log("saving marker text change");
             marker.note = textToBeSaved;
             marker.title = titleToBeSaved;
+            marker.iconSize = iconSizeToSave;
             newChanges();   
             return;
         }
@@ -335,7 +366,6 @@ function projectReset(){
     $('#rightbar').css('visibility', 'hidden');
     $('#welcomeMessage').css('visibility', 'visible');
 
-    //XXX
     clearText()
 
     $("#mapscreen").removeAttr('style');
@@ -344,10 +374,11 @@ function projectReset(){
     //loadIcons(projectName);
 }
 
-function addJsonMarker(xPosition, yPosition, markerID){
-    var newMarker = {//XXX keeps not addint title
+function addJsonMarker(xPosition, yPosition, markerID, markerSize){
+    var newMarker = {
         id:markerID,
         icon: currentMarkerIcon,
+        iconSize: markerSize,
         xPos: xPosition,
         yPos: yPosition,
         title: '',
@@ -355,6 +386,51 @@ function addJsonMarker(xPosition, yPosition, markerID){
     }
     projJson.markers.push(newMarker);
     newChanges();
+}
+
+//direction true is up, else is down, must have a highlighted marker
+function updateMarkerIconSize(direction=null){
+    //XXX
+    //do on button push, also on save and on scroll wheel, change by 10%
+    //when press button, change number itself then call this
+    var originalStr = $('#iconResizeInput').val();
+    if(isNaN(originalStr)){//if isnt a number
+        console.log('not a num');
+        setMarkerSize(defaultImgSize);
+        return;
+    }
+    var originalNum = parseInt(originalStr);
+    if(direction === null){
+        setMarkerSize(originalNum);
+        console.log('marker size set manually');
+        return;
+    }
+
+    var newNum;
+    if(direction){
+        newNum = originalNum * 1.1;
+    }
+    else{
+        newNum = originalNum * 0.9;
+    }
+    setMarkerSize(Math.round(newNum));
+}
+
+function setMarkerSize(imgSize){
+    if(imgSize < minImgSize){
+        imgSize = minImgSize
+    }
+    else if(imgSize > maxImgSize){
+        imgSize = maxImgSize;
+    }
+
+    //change numerical scale
+    $('#iconResizeInput').val(imgSize);
+    //change actual size
+    $(highlightedMarker).width(imgSize);
+    $(highlightedMarker).height(imgSize);//is square
+    //change saved scale XXX
+    saveMarkerText();
 }
 
 function windowReset(){
@@ -395,17 +471,22 @@ ipcRenderer.on('select:all', function(e){
 
 
 var ctrlDown = false;
-var ctrlKey = 17, zKey = 90;
+var ctrlKey = 17, zKey = 90, yKey = 89;
 
+//I had to do these this way to override build in text undo
 document.body.onkeydown = function(e) {
   if (e.keyCode == ctrlKey) {
     ctrlDown = true;
   }
-  if (ctrlDown && e.keyCode == zKey){
+  else if (ctrlDown && e.keyCode == zKey){
     e.preventDefault();
     saveMarkerText();
     undoStep();
     return false;
+  }
+  else if(ctrlDown && e.keyCode == yKey){
+      e.preventDefault();
+      redoStep();
   }
 }
 document.body.onkeyup = function(e) {
@@ -413,6 +494,23 @@ document.body.onkeyup = function(e) {
     ctrlDown = false;
   };
 };
+
+$('#iconResize').on('click', function(){
+    updateMarkerIconSize();
+});
+
+$('#mapscreen').bind('mousewheel', function(e){
+    if(typeof highlightedMarker === 'undefined'){
+        console.log('no highlighted elments');
+        return;
+    }
+    if(e.originalEvent.wheelDelta /120 > 0) {// from https://stackoverflow.com/questions/8189840/get-mouse-wheel-events-in-jquery
+        updateMarkerIconSize(true);
+    }
+    else{
+        updateMarkerIconSize(false);
+    }
+});
 
 $('#saveText').on('click', function(){
     saveMarkerText();
@@ -447,6 +545,7 @@ $('#mainText').bind('input propertychange', function() {
 $('#mapscreen').click(function(e){
     switch (mouseMode) {
         case 'add': 
+            e.preventDefault();
             addNewMarker(e.clientX, e.clientY);
             break;
         case 'view':
