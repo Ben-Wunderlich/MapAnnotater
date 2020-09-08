@@ -24,8 +24,8 @@ function dragElement(elmnt) {
     e = e || window.event;
     //e.preventDefault();
     // get the mouse cursor position at startup:
-    pos3 = e.clientX;
-    pos4 = e.clientY;
+    pos3 = e.clientX/mapZoom;
+    pos4 = e.clientY/mapZoom;
     document.onmouseup = closeDragElement;
     // call a function whenever the cursor moves:
     document.onmousemove = elementDrag;
@@ -35,10 +35,10 @@ function dragElement(elmnt) {
     e = e || window.event;
     e.preventDefault();
     // calculate the new cursor position:
-    pos1 = pos3 - e.clientX;
-    pos2 = pos4 - e.clientY;
-    pos3 = e.clientX;
-    pos4 = e.clientY;
+    pos1 = pos3 - e.clientX/mapZoom;
+    pos2 = pos4 - e.clientY/mapZoom;
+    pos3 = e.clientX/mapZoom;
+    pos4 = e.clientY/mapZoom;
     // set the element's new position:
     elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
     elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
@@ -50,6 +50,8 @@ function dragElement(elmnt) {
     document.onmousemove = null;
   }
 }
+
+
 
 dragElement($('#mapscreen')[0]);
 
@@ -68,8 +70,8 @@ function dragMarker(elmnt, id) {
     e = e || window.event;
     //e.preventDefault();
     // get the mouse cursor position at startup:
-    pos3 = e.clientX;
-    pos4 = e.clientY;
+    pos3 = e.clientX/mapZoom;
+    pos4 = e.clientY/mapZoom;
     
     document.onmouseup = closeDragElement;
     // call a function whenever the cursor moves:
@@ -80,10 +82,10 @@ function dragMarker(elmnt, id) {
     e = e || window.event;
     //e.preventDefault();
     // calculate the new cursor position:
-    pos1 = pos3 - e.clientX;
-    pos2 = pos4 - e.clientY;
-    pos3 = e.clientX;
-    pos4 = e.clientY;
+    pos1 = pos3 - e.clientX/mapZoom;
+    pos2 = pos4 - e.clientY/mapZoom;
+    pos3 = e.clientX/mapZoom;
+    pos4 = e.clientY/mapZoom;
 
     // set the element's new position:
     elmnt.style.top = (elmnt.offsetTop - pos2) + "px";

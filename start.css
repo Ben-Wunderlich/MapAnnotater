@@ -20,24 +20,20 @@ html{
     height: 100%;*/
     float: left;
     position: absolute;
-    /*zoom: 0.5; XXX use this*/
+    zoom: 1;
     /*background-image: url('projects/drggg/image.jpg');*/
 }
 
 #mainText{
     position: relative;
-    height: 80%;
     resize: none;
 }
 
 #titleAndText{
     position: relative;
     top: 60px;
+    left: 7px;
     visibility: hidden;
-}
-
-#noteTitle{
-    
 }
 
 

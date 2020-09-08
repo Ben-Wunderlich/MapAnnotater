@@ -21,6 +21,10 @@ const defaultImgSize = 24;
 const minImgSize = 5;
 const maxImgSize = 300;
 
+var mapZoom = 1.0;
+const minMapZoom = 0.01;
+const maxMapZoom = 2;
+
 //holds marker json whenever is saved,
 //when undo is pressed delete marker and remake
 const maxStackCapacity = 10;
@@ -195,13 +199,16 @@ function loadIcons(projectName){
     });
 }
 
-function loadProject(projectName){//XXX1
+function loadProject(projectName){
     console.log("now opening ".concat(projectName));
     ipcRenderer.send('setTitle', projectName);
     $('#rightbar').css('visibility', 'visible');
     $('#welcomeMessage').css('visibility', 'hidden');
     $("#titleAndText").css('visibility', 'hidden');
     $("#sizeAdjustor").css('visibility', 'hidden');
+
+    mapZoom = 1;
+    $('#mapscreen').css('zoom', mapZoom);
 
     const imgDir = 'projects/'+projectName+'/image.jpg'
 
@@ -218,6 +225,8 @@ function loadProject(projectName){//XXX1
 }
 
 function addNewMarker(currX, currY){
+    currX /= mapZoom;
+    currY /= mapZoom;
     ipcRenderer.send('change:redo', true);
     var imgWidth = parseInt($('#iconResizeInput').val());
     var halfImgWidth;
@@ -390,10 +399,10 @@ function addJsonMarker(xPosition, yPosition, markerID, markerSize){
 
 //direction true is up, else is down, must have a highlighted marker
 function updateMarkerIconSize(direction=null){
-    //XXX
     //do on button push, also on save and on scroll wheel, change by 10%
     //when press button, change number itself then call this
     var originalStr = $('#iconResizeInput').val();
+
     if(isNaN(originalStr)){//if isnt a number
         console.log('not a num');
         setMarkerSize(defaultImgSize);
@@ -417,6 +426,13 @@ function updateMarkerIconSize(direction=null){
 }
 
 function setMarkerSize(imgSize){
+    var markerObject = $('.editingMarker');
+    var currentSize = parseInt(markerObject.css('width'));
+    var currentTop = parseInt(markerObject.css('top'));
+    var currentLeft = parseInt(markerObject.css('left'));
+    var markerIdentifier = markerObject.attr('id');
+
+
     if(imgSize < minImgSize){
         imgSize = minImgSize
     }
@@ -427,10 +443,82 @@ function setMarkerSize(imgSize){
     //change numerical scale
     $('#iconResizeInput').val(imgSize);
     //change actual size
+
     $(highlightedMarker).width(imgSize);
     $(highlightedMarker).height(imgSize);//is square
-    //change saved scale XXX
+
+    //update position so moves symetrically
+    var shiftAmount = Math.floor((imgSize - currentSize)/2);
+    $('.editingMarker').css({
+        'left': currentLeft-shiftAmount+'px',
+        'top': currentTop-shiftAmount+'px'
+    });
+    //update json from top and left
+    projJson.markers.forEach(marker => {
+        if(marker.id === markerIdentifier){
+            marker.yPos = currentTop-shiftAmount;
+            marker.xPos = currentLeft-shiftAmount;
+            return;
+        }
+    });
+
+    //change saved scale
     saveMarkerText();
+}
+
+function updateMapSize(direction, e){
+    var newZoom;
+    if(direction){//zoom out
+        newZoom = Math.round((mapZoom*1.1)*100000000)/100000000;
+        if(newZoom > maxMapZoom){
+            newZoom = maxMapZoom;
+        }
+    }
+    else{
+        newZoom = Math.round((mapZoom*0.9)*100000000)/100000000;
+        if(newZoom < minMapZoom){
+            newZoom = minMapZoom;
+        }
+    }
+    zoomOffsetCompensation(mapZoom, newZoom, e);
+
+    mapZoom = newZoom;
+    $('#mapscreen').css('zoom', newZoom);
+
+    //move map so centered on mouse
+}
+
+function zoomOffsetCompensation(oldZoom, newZoom, e){
+    var screenElement = $('#mapscreen');
+    var zoomDiff = newZoom - oldZoom;
+
+    var mapImgWidth = parseInt(screenElement.css('width'));
+    var mapImgHeight = parseInt(screenElement.css('height'));
+    
+    
+    var imageLeftDist = parseInt(screenElement.css('left'));
+    var imageTopDist = parseInt(screenElement.css('top'));
+
+    //console.log(e.clientX +" "+e.clientY);
+    var mouseFromImgLeft = (e.clientX - imageLeftDist)/newZoom;
+    var mouseFromImgTop = (e.clientY - imageTopDist)/newZoom;
+
+    //XXX currently working on this
+    //var offsetX = (zoomDiff * mouseFromImgLeft);
+    //var offsetY = (zoomDiff * mouseFromImgTop);
+    var offsetX = (mapImgWidth*newZoom - mapImgWidth*oldZoom)/2;
+    var offsetY = (mapImgHeight*newZoom - mapImgHeight*oldZoom)/2;
+
+    //should be subtraction
+    var newLeft = Math.round(imageLeftDist - offsetX);
+    var newTop = Math.round(imageTopDist -offsetY);
+
+    console.log(newZoom);
+
+    screenElement.css({
+        'left':newLeft,
+        'top':newTop
+    });
 }
 
 function windowReset(){
@@ -500,6 +588,17 @@ $('#iconResize').on('click', function(){
 });
 
 $('#mapscreen').bind('mousewheel', function(e){
+    if(mouseMode === 'view'){
+        if(e.originalEvent.wheelDelta /120 > 0) {
+            updateMapSize(true, e);
+        }
+        else{
+            updateMapSize(false, e);
+        }
+        return;
+    }
+
+    //if past here will be either view or add
     if(typeof highlightedMarker === 'undefined'){
         console.log('no highlighted elments');
         return;
