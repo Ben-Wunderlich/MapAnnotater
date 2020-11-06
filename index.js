@@ -76,9 +76,11 @@ function NewProjectMenu(){
             nodeIntegration: true,
             safeDialogs: true,
             enableRemoteModule: true
+
         },
         width: 400,
         height: 300,
+        resizable: false,
         title: "make new project"
     });
 
@@ -312,17 +314,17 @@ const mainMenuTemplate = [
         label: 'edit',
         submenu: [
             {
-                label: 'delete selected markers',
+                label: 'delete selected marker',
                 accelerator: 'Delete',
                 click(){
                     startWindow.webContents.send('delete:marker');
                 }
             },
             {
-                label: 'select all markers',
+                label: 'delete all markers',
                 accelerator: 'Ctrl+Shift+A',
                 click(){
-                    startWindow.webContents.send('select:all');
+                    startWindow.webContents.send('delete:all');
                 }
             },
             {

@@ -21,14 +21,15 @@
 
     </div>
 
+    <span id="bgmaterial"></span>
+
     <div id="rightbar">
         <div id=toptools class="tools">
-            <div id="toggleselect">
-                <h3>mouse option</h3>
-                <button id='viewMouse'>view</button>
-                <button id='addMouse'>add</button>
-                <button id='editMouse'>edit</button>
-            </div>
+                <span id="togglebuttons">
+                    <button id='viewMouse' class="view">view</button>
+                    <button id='addMouse' class="add">add</button>
+                    <button id='editMouse' class="edit">edit</button>
+                </span>
             <div name="icons" id="icons"></div>
             <div id="sizeAdjustor">
                 <input type='text' id='iconResizeInput' value=24>
@@ -36,16 +37,23 @@
             </div>
         </div>
 
-        <div id="titleAndText">
-            <h3 id='noteTitle'>title</h3><input type='text' id='titleText', placeholder="kingdom of valycia">
-            <h3 id='mainTextTitle'>details</h3>
-            <textarea id="mainText" rows="25" placeholder="has an abundance of gnomes"></textarea>
-        </div>
+        <span id=markertools>
+            <div id="titleandtext">
+                <div id='titleninp'>
+                <h3 id='noteTitle'>Location:</h3><input type='text' id='titleText', placeholder="portal to the feywild">
+                </div>
+                <textarea id="mainText" rows="25" cols="36" placeholder="has an abundance of gnomes"></textarea>
+           
+                <div id=bottools class="tools">
+                    <div id=bothold>
+                    <button id="saveText">save</button>
+                    <button id="deleteMarker">delete</button>
+                    </div>
+                </div>
+           
+            </div>
 
-        <div id=bottools class="tools">
-            <button id="saveText">save</button>
-            <button id="deleteMarker">delete</button>
-        </div>
+        </span>
     </div>
     
     <script>window.$ = window.jQuery = require('jquery');</script>

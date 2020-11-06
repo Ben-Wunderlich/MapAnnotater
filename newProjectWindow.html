@@ -2,12 +2,42 @@
 <html lang="en">
 <head>
     <title>create new project</title>
+    <!--do style-->
+    <style>
+        h2{
+            text-align: center;
+        }
+        input, button, label{
+            margin: 5px;
+        }
+        label{
+            font-size: larger;
+            font-weight: bold;
+            margin-right: 2px;
+        }
+        button{
+            position: relative;
+            left: 146px;
+            top: 30px;
+            background-color: #3c9940; /* Green */
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            font-size: 16px;
+        }
+        html{
+            color: #000000;
+            background-color: #4774a1;
+        }
+    </style>
 </head>
 <body>
     <h2>new project</h2>
     <form>
         <div>
-            <label>project information</label>
+            <label>project title</label>
             <input type="text" id="newProjectName" autofocus required>
             <input type="file" id=imageFile accept=".png, .jpg, .jpeg" required>
         </div>

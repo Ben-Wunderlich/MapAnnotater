@@ -1,3 +1,4 @@
+//USE 'npm start' to start it
 //dragElement(document.getElementById("mapscreen"));
 
 const electron = require('electron');
@@ -6,9 +7,9 @@ const {ipcRenderer} = electron;
 var sizeOf = require('image-size');
 
 const fs = require('fs');
-const { title } = require('process');
-const { debug, clear } = require('console');
-const { type } = require('jquery');
+//const { title } = require('process');
+//const { debug, clear } = require('console');
+//const { type } = require('jquery');
 
 var projJson;
 
@@ -21,9 +22,33 @@ const defaultImgSize = 24;
 const minImgSize = 5;
 const maxImgSize = 300;
 
-var mapZoom = 1.0;
-const minMapZoom = 0.01;
-const maxMapZoom = 2;
+const zoomLevels = [
+    1.0,
+    0.9,
+    0.81,
+    0.729,
+    0.6561,
+    0.59049,
+    0.531441,
+    0.4782969,
+    0.43046721,
+    0.387420489,
+    0.3486784401,
+    0.31381059609,
+    0.282429536481,
+    0.25418658283,
+    0.22876792454,
+    0.20589113208,
+    0.18530201887,
+    0.16677181698,
+    0.15009463528,
+    0.13508517175,
+    0.12157665457
+];
+const minMapZoom = 0;
+const maxMapZoom = zoomLevels.length - 1;
+var zoomIndex = 0
+var mapZoom = zoomLevels[zoomIndex];
 
 //holds marker json whenever is saved,
 //when undo is pressed delete marker and remake
@@ -204,17 +229,17 @@ function loadProject(projectName){
     ipcRenderer.send('setTitle', projectName);
     $('#rightbar').css('visibility', 'visible');
     $('#welcomeMessage').css('visibility', 'hidden');
-    $("#titleAndText").css('visibility', 'hidden');
-    $("#sizeAdjustor").css('visibility', 'hidden');
+    $("#markertools").css('visibility', 'hidden');
+    //$("#sizeAdjustor").css('visibility', 'hidden');
 
-    mapZoom = 1;
+    changeZoom(0);//also updates mapzoom
     $('#mapscreen').css('zoom', mapZoom);
 
     const imgDir = 'projects/'+projectName+'/image.jpg'
 
     //load main image
     changeBackgroundImage(imgDir);
-
+    setMouseMode("view");
 
     //reset image position
     $('#mapscreen').css({'top':'0px', 'left':'0px'})
@@ -277,7 +302,8 @@ function highlightMarker(elmnt, elmntID){
     setMarkerText(elmnt, elmntID);
     highlightedMarker = elmnt;
     markerID = elmntID;
-    $("#titleAndText").css('visibility', 'visible');
+    //$("#titleandtext").css('visibility', 'visible');
+    $("#markertools").css('visibility', 'visible');
 
     $("img[src$='"+icon+"']").filter(".baseIcon").trigger('click');//XXX here it is!!!
 
@@ -291,17 +317,18 @@ function deselectMarker(){
     clearText();
     highlightedMarker = undefined;
     markerID = undefined;
-    $("#titleAndText").css('visibility', 'hidden');
-    $("#sizeAdjustor").css('visibility', 'hidden');
+    $("#markertools").css('visibility', 'hidden');
+    //$("#titleandtext").css('visibility', 'hidden');
+    //$("#sizeAdjustor").css('visibility', 'hidden');
 }
 
-function selectAllMarkers(){
+function deleteAllMarkers(){
     $('.marker').addClass('editingMarker');
+    deleteMarker();
 }
 
 function setMarkerText(elmnt, elementID){
-    $('#titleAndText').css("visiblity", 'visible');
-    $("#sizeAdjustor").css('visibility', 'visible');
+    $("#markertools").css('visibility', 'visible');
 
     projJson.markers.forEach(marker => {
         if(marker.id === elementID){
@@ -364,7 +391,9 @@ function deleteMarker(){
             remainingMarkers.push(marker);
         }
     }
+    $("#markertools").css('visibility', 'hidden');
     projJson.markers = remainingMarkers;
+    //XXX also hide thing
     newChanges();
     $(".editingMarker").remove();
 }
@@ -422,7 +451,7 @@ function updateMarkerIconSize(direction=null){
     else{
         newNum = originalNum * 0.9;
     }
-    setMarkerSize(Math.round(newNum));
+    setMarkerSize(Math.ceil(newNum));
 }
 
 function setMarkerSize(imgSize){
@@ -466,54 +495,68 @@ function setMarkerSize(imgSize){
     saveMarkerText();
 }
 
+function changeZoom(newIndex){
+    zoomIndex = newIndex;
+    mapZoom = zoomLevels[newIndex];
+    return mapZoom;
+}
+
 function updateMapSize(direction, e){
     var newZoom;
+    var oldZoom = mapZoom;
+
     if(direction){//zoom out
-        newZoom = Math.round((mapZoom*1.1)*100000000)/100000000;
-        if(newZoom > maxMapZoom){
-            newZoom = maxMapZoom;
+        if(zoomIndex <= minMapZoom){
+            console.log('fully zoomed in');
+            return;
         }
+        newZoom = changeZoom(--zoomIndex);
     }
     else{
-        newZoom = Math.round((mapZoom*0.9)*100000000)/100000000;
-        if(newZoom < minMapZoom){
-            newZoom = minMapZoom;
+        if(zoomIndex >= maxMapZoom){
+            console.log('fully zoomed out');
+            return;
         }
+        newZoom = changeZoom(++zoomIndex);
     }
-    zoomOffsetCompensation(mapZoom, newZoom, e);
+    //baseZoomStabilize(oldZoom, newZoom)
+    zoomOffsetCompensation(oldZoom, newZoom, e);
+    //lucZoom(oldZoom, newZoom, e);
 
-    mapZoom = newZoom;
     $('#mapscreen').css('zoom', newZoom);
 
     //move map so centered on mouse
 }
 
+
 function zoomOffsetCompensation(oldZoom, newZoom, e){
     var screenElement = $('#mapscreen');
-    var zoomDiff = newZoom - oldZoom;
-
-    var mapImgWidth = parseInt(screenElement.css('width'));
-    var mapImgHeight = parseInt(screenElement.css('height'));
-    
     
     var imageLeftDist = parseInt(screenElement.css('left'));
     var imageTopDist = parseInt(screenElement.css('top'));
 
     //console.log(e.clientX +" "+e.clientY);
-    var mouseFromImgLeft = (e.clientX - imageLeftDist)/newZoom;
-    var mouseFromImgTop = (e.clientY - imageTopDist)/newZoom;
+    var mouseFromImgLeft = e.pageX;
+    var mouseFromImgTop = e.pageY;
+
+    var oldMouseLeft = mouseFromImgLeft * oldZoom;
+    var oldMouseTop = mouseFromImgTop * oldZoom;
+
+    var newMouseLeft = mouseFromImgLeft * newZoom;
+    var newMouseTop = mouseFromImgTop * newZoom
 
     //XXX currently working on this
-    //var offsetX = (zoomDiff * mouseFromImgLeft);
-    //var offsetY = (zoomDiff * mouseFromImgTop);
-    var offsetX = (mapImgWidth*newZoom - mapImgWidth*oldZoom)/2;
-    var offsetY = (mapImgHeight*newZoom - mapImgHeight*oldZoom)/2;
+    var offsetX = (newMouseLeft - oldMouseLeft)/newZoom;
+    var offsetY = (newMouseTop - oldMouseTop)/newZoom;
+
+    console.log('offsetx ' +offsetX);
+    console.log('offsety ' +offsetY);
 
     //should be subtraction
-    var newLeft = Math.round(imageLeftDist - offsetX);
-    var newTop = Math.round(imageTopDist -offsetY);
+    var newLeft = Math.ceil(imageLeftDist - offsetX);
+    var newTop = Math.ceil(imageTopDist -offsetY);
 
-    console.log(newZoom);
+    console.log(oldZoom + " "+ newZoom);
 
     screenElement.css({
         'left':newLeft,
@@ -521,11 +564,22 @@ function zoomOffsetCompensation(oldZoom, newZoom, e){
     });
 }
 
+function viewableArea(){
+    
+}
+
 function windowReset(){
-    mouseMode = 'view';
+    setMouseMode("view");
     clearText();
     //this will need more stuff as it goes
 }
+
+function setMouseMode(newMode){
+    mouseMode=newMode;
+    $("#togglebuttons").children().removeClass("currentmousemode");
+    $("."+newMode).addClass("currentmousemode");
+}
+
 
 //projInfo has [name, json]
 ipcRenderer.on('project:open', function(e,projInfo){
@@ -553,10 +607,9 @@ ipcRenderer.on('delete:marker', function(e){
     deleteMarker();
 });
 
-ipcRenderer.on('select:all', function(e){
-    selectAllMarkers();
+ipcRenderer.on('delete:all', function(e){
+    deleteAllMarkers();
 });
-
 
 var ctrlDown = false;
 var ctrlKey = 17, zKey = 90, yKey = 89;
@@ -587,7 +640,7 @@ $('#iconResize').on('click', function(){
     updateMarkerIconSize();
 });
 
-$('#mapscreen').bind('mousewheel', function(e){
+$('#bgmaterial, #mapscreen').on('mousewheel', function(e){
     if(mouseMode === 'view'){
         if(e.originalEvent.wheelDelta /120 > 0) {
             updateMapSize(true, e);
@@ -620,28 +673,29 @@ $('#deleteMarker').on('click', function(){
 });
 
 $('#viewMouse').on('click', function(){
-    mouseMode='view';
+    setMouseMode("view");
 });
 
 $('#addMouse').on('click', function(){
-    mouseMode='add';
+    setMouseMode("add");
 });
 
 $('#editMouse').on('click', function(){
-    mouseMode='edit';
+    setMouseMode("edit");
 });
 
 $('.marker').on('click', function(event){
     event.preventDefault();
 });
 
-$('#mainText').bind('input propertychange', function() {
+$('#mainText').on('onkeyup', function() {
+    console.log("hswuie");
     ipcRenderer.send('work-unsaved');
 });
 
 
 
-$('#mapscreen').click(function(e){
+$('#bgmaterial, #mapscreen').on('click', function(e){
     switch (mouseMode) {
         case 'add': 
             e.preventDefault();
