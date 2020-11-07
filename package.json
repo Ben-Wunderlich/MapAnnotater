@@ -17,8 +17,12 @@
   },
   "homepage": "https://github.com/Ben-Wunderlich/MapAnnotater#readme",
   "dependencies": {
+    "dragselect": "^1.14.0",
     "electron": "^9.2.0",
     "image-size": "^0.8.3",
     "jquery": "^3.5.1"
+  },
+  "devDependencies": {
+    "electron-rebuild": "^2.3.2"
   }
 }

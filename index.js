@@ -25,10 +25,13 @@ app.on('ready', function(){
     startWindow = new BrowserWindow({
         webPreferences:{
             nodeIntegration: true,
-            enableRemoteModule: true
+            enableRemoteModule: true,
+            webSecurity: false
         },
         width: 1500,
-        height: 800
+        height: 800,
+        minWidth: 1000,
+        minHeight: 600,
     });
 
     //load html file into window
@@ -157,8 +160,17 @@ function getJson(projectName){
     });
 }
 
+function projectFolderisValid(projPath, title){
+    if (fs.existsSync(projPath) &&
+    fs.existsSync(path.join(projPath, title+".json")) &&
+    fs.existsSync(path.join(projPath, "image.jpg"))){
+        return true;
+    }
+    return false;
+}
+
 function chooseProject(){
-    let projectsUrl = path.join(__dirname, 'projects')
+    let projectsUrl = path.join(__dirname, 'projects');
     
     dialog.showOpenDialog({
         defaultPath: projectsUrl,
@@ -166,11 +178,10 @@ function chooseProject(){
         
     }).then(result => {
         let paths = result.filePaths;
-        if(paths.length == 0)
-            return;
         var justName = paths[0].substring(paths[0].lastIndexOf('\\')+1);
         currentProjectTitle = justName;
-
+        if(paths.length == 0 || !projectFolderisValid(paths[0], justName))
+            return;
         getJson(justName).then(result => {
             startWindow.webContents.send('project:open', [justName, result]);
         })
@@ -218,6 +229,10 @@ function setRedo(isEnabled){
     menuItem.enabled = isEnabled;
 }
 
+function sendModeChange(mouseValue){
+    startWindow.webContents.send('change:mousemode', mouseValue);
+}
+
 /*var choice = dialog.showMessageBoxSync(this,
     {
       type: 'question',
@@ -261,7 +276,7 @@ ipcMain.on('setTitle', function(e, newTitle){
     startWindow.setTitle(newTitle);
 })
 
-ipcMain.on('work-unsaved', function(e, Truem){
+ipcMain.on('work-unsaved', function(e, True){
     unsavedWork = true;
     startWindow.setTitle(currentProjectTitle+"*");
 })
@@ -321,13 +336,6 @@ const mainMenuTemplate = [
                 }
             },
             {
-                label: 'delete all markers',
-                accelerator: 'Ctrl+Shift+A',
-                click(){
-                    startWindow.webContents.send('delete:all');
-                }
-            },
-            {
                 label: 'undo',
                 accelerator: 'Ctrl+Z',
             },
@@ -338,8 +346,7 @@ const mainMenuTemplate = [
                 click(){
                     startWindow.webContents.send('redo:step');
                 }
-            }
-            
+            }            
         ]
     },
     {
@@ -354,6 +361,39 @@ const mainMenuTemplate = [
                     else{
                         startWindow.setFullScreen(true);
                     }
+                }
+            }
+        ]
+    },
+    {
+        label: 'tools',
+        submenu: [
+            {
+                label: 'enter view mode',
+                accelerator: 'Ctrl+1',
+                click(){
+                    sendModeChange('view');
+                }
+            },
+            {
+                label: 'enter add mode',
+                accelerator: 'Ctrl+2',
+                click(){
+                    sendModeChange('add');
+                }
+            },
+            {
+                label: 'enter edit mode',
+                accelerator: 'Ctrl+3',
+                click(){
+                    sendModeChange('edit');
+                }
+            },
+            {
+                label: 'delete all markers',
+                accelerator: 'Ctrl+Shift+delete',
+                click(){
+                    startWindow.webContents.send('delete:all');
                 }
             }
         ]

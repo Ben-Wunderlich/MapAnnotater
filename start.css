@@ -1,8 +1,8 @@
 html{
     background-color: #222831;
 }
+
 #bgmaterial{
-    background-color: #222831;
     position: absolute;
     left: 0%;
     width: 100%;
@@ -24,12 +24,29 @@ html{
     text-align: center;
 }
 
+button{
+    border-color: #525a40;
+    border-style: double;
+    border-width: 5px;
+    color: rgb(237, 248, 248);
+    font-size: 16px;
+    padding-left: 6px;
+    background-color: #356d51;
+}
+button:focus{
+    outline-style: ridge;
+    outline-color: #aec6e6;
+    outline-width: 2px;
+}
+
 #mapscreen{
     /*width: 90%;
     height: 100%;*/
+    width: 100%;
+    height: 100%;
     float: left;
     position: absolute;
-    zoom: 1;
+    z-index: 1;
     /*background-image: url('projects/drggg/image.jpg');*/
 }
 
@@ -37,12 +54,16 @@ html{
     resize: none;
     position: fixed;
     top:10px;
-    /*width:  calc(100vw - 20px);      /* calc and viewport to the rescue */
-    /*height: calc(100vh - 20px);*/
-    height: 50%;
+    height: calc(100vh - 300px);/*XXX this solution is bad but works well*/
     resize: none;
 }
 
+#mapmarkers{
+    transform-origin: 0 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+}
 #markertools{
     visibility: hidden;
     display: block;
@@ -54,7 +75,7 @@ html{
     padding: 5px;
     width: 90%;
     left: 5%;
-    top: 50px;
+    top: 80px;
     display: block;
 }
 #titleninp{
@@ -81,6 +102,7 @@ html{
     background-color: #30475e;
     display: block;
     visibility: hidden;
+    z-index: 4;
 }
 #rightbar *{
     position: relative;
@@ -133,7 +155,9 @@ body{
 }
 
 #iconResizeInput{
-    width: 20%;
+    width: 10%;
+    height: 12px;
+    padding-left: 0px;
 }
 
 #togglebuttons{
@@ -146,6 +170,7 @@ body{
     left: 22%;
 }
 #togglebuttons button{
+    outline: none;
     font-size: 20px;
     height: 40px;
     border: none;
@@ -157,9 +182,7 @@ body{
     background-color: #4c375c;
     color: #887c53;
 }
-button:focus{
-    outline: none;
-}
+
 .currentmousemode{
     background-color: #497c49;
     color: #f2a365;
@@ -170,7 +193,6 @@ button:focus{
     position: relative;
     padding: 8px;
     width: 90%;
-    height: 90%;
     left: 5%;
 }
 

@@ -2,6 +2,7 @@
 //dragElement(document.getElementById("mapscreen"));
 
 const electron = require('electron');
+const DragSelect = require('dragselect');
 const {ipcRenderer} = electron;
 //const dialog = electron.remote.dialog;
 var sizeOf = require('image-size');
@@ -12,6 +13,8 @@ const fs = require('fs');
 //const { type } = require('jquery');
 
 var projJson;
+var trueImageWidth;
+var trueImageHeight
 
 var highlightedMarker;
 var markerID;
@@ -60,12 +63,26 @@ var redoStack = [];
 //can be 'view', 'add' or 'edit'
 var mouseMode;
 
-function changeBackgroundImage(url){
-    let formatUrl = 'url('+url+')';
-    var dimensions = sizeOf(url);
+var selectio = new DragSelect({
+    //selectables: document.getElementsByClassName('marker'),XXX
+    area: document.getElementById('mapscreen'),
+    onDragStart: function(element) {
+        /*if(mouseMode!='edit' || $("element").hasClass('marker')){
+            //this.stop();
+        }*/
+    },
+    onElementSelect: function(element) {$(element).addClass('editingMarker')},
+    onElementUnselect: function(element) {$(element).removeClass('editingMarker')}
+});
 
-    $('#mapscreen').css({'background-image': formatUrl,
-    'width':dimensions.width, 'height': dimensions.height
+function changeBackgroundImage(url){//XXX update this
+    var dimensions = sizeOf(url);
+    trueImageHeight = dimensions.height;
+    trueImageWidth = dimensions.width;
+
+    $('#mapimg').attr('src', url);
+    $('#mapimg').css({'width':dimensions.width,
+     'height': dimensions.height
     });
 }
 
@@ -233,7 +250,9 @@ function loadProject(projectName){
     //$("#sizeAdjustor").css('visibility', 'hidden');
 
     changeZoom(0);//also updates mapzoom
-    $('#mapscreen').css('zoom', mapZoom);
+    //$('#mapscreen').css('zoom', mapZoom);dont think I need this
+    //$('#mapmarkers').css("zoom", mapZoom);
+    $('#mapmarkers').css("transform", 'scale('+mapZoom+','+mapZoom+')');
 
     const imgDir = 'projects/'+projectName+'/image.jpg'
 
@@ -289,6 +308,7 @@ function addExistingMarker(fromLeft, fromTop, id, icon, iconSize){
 
     dragMarker(markerElement, id);
 
+    selectio.addSelectables(markerElement);
     $('#mapmarkers').append(markerElement);
     return markerElement;
 }
@@ -519,42 +539,47 @@ function updateMapSize(direction, e){
         }
         newZoom = changeZoom(++zoomIndex);
     }
-    //baseZoomStabilize(oldZoom, newZoom)
-    zoomOffsetCompensation(oldZoom, newZoom, e);
     //lucZoom(oldZoom, newZoom, e);
 
-    $('#mapscreen').css('zoom', newZoom);
-
+    $('#mapmarkers').css("zoom", newZoom);
+    //console.log("scale is now "+'scale('+newZoom+','+newZoom+')');
+    //$('#mapmarkers').css('transform', 'scale('+newZoom+','+newZoom+')');
+    //$('#mapscreen').css('zoom', newZoom);//XXX bugge when selecting  
+    
+    $('#mapimg').css({
+        'width':Math.round(trueImageWidth*newZoom),
+        'height':Math.round(trueImageHeight*newZoom)
+    });
     //move map so centered on mouse
+    zoomOffsetCompensation(oldZoom, newZoom, e);
 }
 
 
 function zoomOffsetCompensation(oldZoom, newZoom, e){
     var screenElement = $('#mapscreen');
     
+    var zoomRatio = newZoom/oldZoom;
+
     var imageLeftDist = parseInt(screenElement.css('left'));
     var imageTopDist = parseInt(screenElement.css('top'));
 
-    //console.log(e.clientX +" "+e.clientY);
-    var mouseFromImgLeft = e.pageX;
-    var mouseFromImgTop = e.pageY;
+    var ptOne = {
+        x: e.pageX-imageLeftDist,
+        y: e.pageY-imageTopDist
+    }
 
-    var oldMouseLeft = mouseFromImgLeft * oldZoom;
-    var oldMouseTop = mouseFromImgTop * oldZoom;
+    var nextPt = {
+        x: ptOne.x*zoomRatio,
+        y: ptOne.y*zoomRatio
+    }
 
-    var newMouseLeft = mouseFromImgLeft * newZoom;
-    var newMouseTop = mouseFromImgTop * newZoom
+    var diffs = {
+        x: nextPt.x - ptOne.x,
+        y: nextPt.y - ptOne.y
+    }
 
-    //XXX currently working on this
-    var offsetX = (newMouseLeft - oldMouseLeft)/newZoom;
-    var offsetY = (newMouseTop - oldMouseTop)/newZoom;
-
-    console.log('offsetx ' +offsetX);
-    console.log('offsety ' +offsetY);
-
-    //should be subtraction
-    var newLeft = Math.ceil(imageLeftDist - offsetX);
-    var newTop = Math.ceil(imageTopDist -offsetY);
+    var newLeft = Math.round(imageLeftDist - diffs.x);
+    var newTop = Math.round(imageTopDist- diffs.y);
 
     console.log(oldZoom + " "+ newZoom);
 
@@ -562,10 +587,6 @@ function zoomOffsetCompensation(oldZoom, newZoom, e){
         'left':newLeft,
         'top':newTop
     });
-}
-
-function viewableArea(){
-    
 }
 
 function windowReset(){
@@ -580,6 +601,17 @@ function setMouseMode(newMode){
     $("."+newMode).addClass("currentmousemode");
 }
 
+function saveFile(){
+    saveMarkerText();
+    if(typeof projJson !== 'undefined'){
+        console.log("sending save request");
+        ipcRenderer.send('project:savefile', projJson);
+    }
+    else{
+        console.log("no file to save");
+    }
+}
+
 
 //projInfo has [name, json]
 ipcRenderer.on('project:open', function(e,projInfo){
@@ -590,17 +622,15 @@ ipcRenderer.on('project:open', function(e,projInfo){
 
 //responds to save request from client
 ipcRenderer.on('project:save', function(e){
-    saveMarkerText();
-    if(typeof projJson !== 'undefined'){
-        ipcRenderer.send('project:savefile', projJson);
-    }
-    else{
-        console.log("no file to save");
-    }
+    saveFile();
 });
 
 ipcRenderer.on('project:delete', function(e){
     projectReset();
+});
+
+ipcRenderer.on('change:mousemode', (event, mode) =>{
+    setMouseMode(mode);
 });
 
 ipcRenderer.on('delete:marker', function(e){
@@ -665,7 +695,7 @@ $('#bgmaterial, #mapscreen').on('mousewheel', function(e){
 });
 
 $('#saveText').on('click', function(){
-    saveMarkerText();
+    saveFile();
 });
 
 $('#deleteMarker').on('click', function(){
@@ -694,7 +724,6 @@ $('#mainText').on('onkeyup', function() {
 });
 
 
-
 $('#bgmaterial, #mapscreen').on('click', function(e){
     switch (mouseMode) {
         case 'add': 
@@ -705,9 +734,13 @@ $('#bgmaterial, #mapscreen').on('click', function(e){
             break;
         case 'edit':
             break;
-        default:
-            throw 'mouse mode in something other than view, edit or add';
+        /*default:
+            throw 'mouse mode in something other than view, edit or add';*/
     }
 });
+
+/*$(window).on('resize', function(){
+    //XXX
+});*/
 
 makeMarkerOptions();

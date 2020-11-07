@@ -6,17 +6,18 @@
 </head>
 <body>
 
-    <div id="mapscreen">
-    <span id="mapmarkers">
-        <!--<img src="map_markers/blue_bull.png" class="marker" style="left: 120px;top:300px;">-->
-    </span>
-    </div>
-
     <div id="welcomeMessage">
         <h2>Welcome to Map Annotater</h2>
         <p id="promptText">
             press Ctrl+N to make a new project or Ctrl+O to open a previous project
         </p>
+    </div>
+
+    <div id="mapscreen" draggable="false">
+    <img id="mapimg" draggable="false">
+    <span id="mapmarkers" draggable="false">
+        <!--<img src="map_markers/blue_bull.png" class="marker" style="left: 120px;top:300px;">-->
+    </span>
     </div>
 
     </div>
@@ -32,6 +33,7 @@
                 </span>
             <div name="icons" id="icons"></div>
             <div id="sizeAdjustor">
+                <h3 id=iconsizetitle>marker size:</h3>
                 <input type='text' id='iconResizeInput' value=24>
                 <button id='iconResize'>resize</button>
             </div>

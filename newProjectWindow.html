@@ -64,6 +64,9 @@
 
             const projName = document.querySelector("#newProjectName").value.replace(/\s+/g, "-");
             const image = document.querySelector("#imageFile").files[0];
+            if(image==null){
+                
+            }
 
             if(ProjectAlreadyExists(projName)){
                 let errorStr = "a project called '"+projName+"' already exists, overwrite it?"
