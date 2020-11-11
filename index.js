@@ -1,10 +1,22 @@
+
+//USE 'npm start' to start it
+
+/*
+made using electron https://www.electronjs.org
+
+drag functionality from https://thibaultjanbeyer.github.io/DragSelect/
+
+jquery from https://jquery.com
+*/
+
+
+
 const electron = require('electron');
 const url = require('url');
 const path = require('path');
 const fs = require('fs');
 //const { type } = require('jquery');
 const { dialog } = require('electron');
-const { resolve } = require('dns');
 
 const {app, BrowserWindow, Menu, ipcMain} = electron;
 
@@ -12,7 +24,6 @@ const {app, BrowserWindow, Menu, ipcMain} = electron;
 //process.env.NODE_ENV = 'production';
 
 let startWindow;
-let addWindow;
 let currentProjectTitle
 
 var unsavedWork = false;
@@ -32,6 +43,7 @@ app.on('ready', function(){
         height: 800,
         minWidth: 1000,
         minHeight: 600,
+        icon: "myicon.ico"
     });
 
     //load html file into window
@@ -185,6 +197,8 @@ function chooseProject(){
         getJson(justName).then(result => {
             startWindow.webContents.send('project:open', [justName, result]);
         })
+    }).catch(err => {
+        console.log("promise was rejected");
     });
 
     /*fs.readdirSync(projectsUrl).forEach(file => {
@@ -390,10 +404,10 @@ const mainMenuTemplate = [
                 }
             },
             {
-                label: 'delete all markers',
-                accelerator: 'Ctrl+Shift+delete',
+                label: 'select all markers',
+                accelerator: 'Ctrl+Shift+A',
                 click(){
-                    startWindow.webContents.send('delete:all');
+                    startWindow.webContents.send('select:all');
                 }
             }
         ]

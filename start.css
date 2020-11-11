@@ -39,6 +39,10 @@ button:focus{
     outline-width: 2px;
 }
 
+#icons{
+    z-index: 6;
+}
+
 #mapscreen{
     /*width: 90%;
     height: 100%;*/
@@ -155,7 +159,7 @@ body{
 }
 
 #iconResizeInput{
-    width: 10%;
+    width: 15%;
     height: 12px;
     padding-left: 0px;
 }

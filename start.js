@@ -1,5 +1,3 @@
-//USE 'npm start' to start it
-//dragElement(document.getElementById("mapscreen"));
 
 const electron = require('electron');
 const DragSelect = require('dragselect');
@@ -23,7 +21,8 @@ var currentMarkerIcon;
 
 const defaultImgSize = 24;
 const minImgSize = 5;
-const maxImgSize = 300;
+const maxImgSize = 500;
+$("#iconResizeInput").attr('min', minImgSize).attr('max', maxImgSize);
 
 const zoomLevels = [
     1.0,
@@ -46,7 +45,11 @@ const zoomLevels = [
     0.16677181698,
     0.15009463528,
     0.13508517175,
-    0.12157665457
+    0.12157665457,
+    0.10941898911,
+    0.09847709019,
+    0.08862938117,
+    0.07976644305
 ];
 const minMapZoom = 0;
 const maxMapZoom = zoomLevels.length - 1;
@@ -64,18 +67,23 @@ var redoStack = [];
 var mouseMode;
 
 var selectio = new DragSelect({
-    //selectables: document.getElementsByClassName('marker'),XXX
     area: document.getElementById('mapscreen'),
-    onDragStart: function(element) {
-        /*if(mouseMode!='edit' || $("element").hasClass('marker')){
-            //this.stop();
-        }*/
+    onDragStart: function() {
+        if(mouseMode!='edit'){
+            selectio.break();
+        }
     },
-    onElementSelect: function(element) {$(element).addClass('editingMarker')},
-    onElementUnselect: function(element) {$(element).removeClass('editingMarker')}
+    onElementSelect: function(element) {
+        if(mouseMode=='edit'){
+        $(element).addClass('editingMarker');}
+    },
+    onElementUnselect: function(element) {
+        if(mouseMode=='edit'){
+        $(element).removeClass('editingMarker');}
+    }
 });
 
-function changeBackgroundImage(url){//XXX update this
+function changeBackgroundImage(url){
     var dimensions = sizeOf(url);
     trueImageHeight = dimensions.height;
     trueImageWidth = dimensions.width;
@@ -234,8 +242,6 @@ function loadIcons(projectName){
     //add icons from project
     const markers = projJson.markers;
 
-    //XXX add thing for icon size
-
     markers.forEach(marker =>{
         addExistingMarker(marker.xPos, marker.yPos, marker.id, marker.icon, marker.iconSize)
     });
@@ -268,11 +274,19 @@ function loadProject(projectName){
     updateOperationStack();
 }
 
+//XXX this works very strangely when zoomed out
 function addNewMarker(currX, currY){
+    console.log("currx was just "+currX);
     currX /= mapZoom;
     currY /= mapZoom;
+
+    console.log("currx is now "+currX);
     ipcRenderer.send('change:redo', true);
     var imgWidth = parseInt($('#iconResizeInput').val());
+
+    if(imgWidth < minImgSize){imgWidth = minImgSize;}
+    if(imgWidth > maxImgSize){imgWidth = maxImgSize;}
+
     var halfImgWidth;
     if(isNaN(imgWidth)){
         halfImgWidth = defaultImgSize / 2;
@@ -281,8 +295,8 @@ function addNewMarker(currX, currY){
         halfImgWidth = Math.round(imgWidth / 2);
     }
 
-    canvasX = parseInt($('#mapscreen').css('left'), 10);
-    canvasY = parseInt($('#mapscreen').css('top'), 10);
+    canvasX = parseInt($('#mapscreen').css('left'));
+    canvasY = parseInt($('#mapscreen').css('top'));
 
     practicalX = currX-halfImgWidth-canvasX;
     practicalY = currY-halfImgWidth-canvasY;
@@ -329,7 +343,7 @@ function highlightMarker(elmnt, elmntID){
 
 }
 
-
+//XXX try making this with manually moving each icon but not resizing them
 
 //called from drag.js
 function deselectMarker(){
@@ -340,11 +354,6 @@ function deselectMarker(){
     $("#markertools").css('visibility', 'hidden');
     //$("#titleandtext").css('visibility', 'hidden');
     //$("#sizeAdjustor").css('visibility', 'hidden');
-}
-
-function deleteAllMarkers(){
-    $('.marker').addClass('editingMarker');
-    deleteMarker();
 }
 
 function setMarkerText(elmnt, elementID){
@@ -413,7 +422,7 @@ function deleteMarker(){
     }
     $("#markertools").css('visibility', 'hidden');
     projJson.markers = remainingMarkers;
-    //XXX also hide thing
+
     newChanges();
     $(".editingMarker").remove();
 }
@@ -462,7 +471,7 @@ function updateMarkerIconSize(direction=null){
         setMarkerSize(originalNum);
         console.log('marker size set manually');
         return;
-    }
+    } 
 
     var newNum;
     if(direction){
@@ -471,16 +480,20 @@ function updateMarkerIconSize(direction=null){
     else{
         newNum = originalNum * 0.9;
     }
-    setMarkerSize(Math.ceil(newNum));
+    newNum = Math.round(newNum);
+
+    /* if nothing changed */
+    if(newNum < minImgSize || newNum > maxImgSize){
+        console.log("too much");
+        return;
+    }
+
+    setMarkerSize(newNum);
 }
 
+//XXX this needs to be tested when selecting multiple elements
 function setMarkerSize(imgSize){
-    var markerObject = $('.editingMarker');
-    var currentSize = parseInt(markerObject.css('width'));
-    var currentTop = parseInt(markerObject.css('top'));
-    var currentLeft = parseInt(markerObject.css('left'));
-    var markerIdentifier = markerObject.attr('id');
-
+    console.log("new size is "+imgSize);
 
     if(imgSize < minImgSize){
         imgSize = minImgSize
@@ -489,27 +502,48 @@ function setMarkerSize(imgSize){
         imgSize = maxImgSize;
     }
 
-    //change numerical scale
+    //change value in table
     $('#iconResizeInput').val(imgSize);
-    //change actual size
 
-    $(highlightedMarker).width(imgSize);
-    $(highlightedMarker).height(imgSize);//is square
+    var markersEditing = $('.editingMarker');
+    var highLightIds = Object.create(null);
 
-    //update position so moves symetrically
-    var shiftAmount = Math.floor((imgSize - currentSize)/2);
-    $('.editingMarker').css({
-        'left': currentLeft-shiftAmount+'px',
-        'top': currentTop-shiftAmount+'px'
+    var markerObject = markersEditing.each(function(){
+        currMarker = $(this);
+
+        var currentSize = parseInt(currMarker.css('width'));
+        var currentTop = parseInt(currMarker.css('top'));
+        var currentLeft = parseInt(currMarker.css('left'));
+        var currId = currMarker.attr('id');
+
+        var shiftAmount = Math.round((imgSize - currentSize)/2);
+        //update position so moves symetrically
+        currMarker.css({
+            'left': currentLeft-shiftAmount+'px',
+            'top': currentTop-shiftAmount+'px'
+        });
+
+        highLightIds[currId] = shiftAmount;
+        //update json from top and left
     });
-    //update json from top and left
+
+
+    //update values on json
+    var markerId;
     projJson.markers.forEach(marker => {
-        if(marker.id === markerIdentifier){
-            marker.yPos = currentTop-shiftAmount;
-            marker.xPos = currentLeft-shiftAmount;
-            return;
+        markerId = marker.id;
+        if(highLightIds[markerId] != undefined){
+            marker.iconSize = imgSize;
+            marker.yPos = parseInt(marker.yPos)- highLightIds[markerId];
+            marker.xPos = parseInt(marker.xPos)-highLightIds[markerId];
         }
     });
+
+
+
+    //set height and width for all of them
+    $(markerObject).width(imgSize);
+    $(markerObject).height(imgSize);//is square
 
     //change saved scale
     saveMarkerText();
@@ -554,7 +588,7 @@ function updateMapSize(direction, e){
     zoomOffsetCompensation(oldZoom, newZoom, e);
 }
 
-
+//finally works, moves image to adjust for changing size so is still around mouse
 function zoomOffsetCompensation(oldZoom, newZoom, e){
     var screenElement = $('#mapscreen');
     
@@ -580,8 +614,6 @@ function zoomOffsetCompensation(oldZoom, newZoom, e){
 
     var newLeft = Math.round(imageLeftDist - diffs.x);
     var newTop = Math.round(imageTopDist- diffs.y);
-
-    console.log(oldZoom + " "+ newZoom);
 
     screenElement.css({
         'left':newLeft,
@@ -637,8 +669,8 @@ ipcRenderer.on('delete:marker', function(e){
     deleteMarker();
 });
 
-ipcRenderer.on('delete:all', function(e){
-    deleteAllMarkers();
+ipcRenderer.on('select:all', function(e){
+    $('.marker').addClass('editingMarker');
 });
 
 var ctrlDown = false;
@@ -682,7 +714,8 @@ $('#bgmaterial, #mapscreen').on('mousewheel', function(e){
     }
 
     //if past here will be either view or add
-    if(typeof highlightedMarker === 'undefined'){
+    //if(typeof highlightedMarker === 'undefined'){
+    if($('.editingMarker').length==0){
         console.log('no highlighted elments');
         return;
     }
