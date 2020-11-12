@@ -139,7 +139,7 @@ function CreateProjectFiles(items){
     var jsonObj = {
             id: makeid(10),
             title: items[0],
-            markers:[]
+            markers:{}
     }
     fs.writeFile(textPath, JSON.stringify(jsonObj), function (err) {
         if (err) throw err;

@@ -89,8 +89,9 @@ function changeBackgroundImage(url){
     trueImageWidth = dimensions.width;
 
     $('#mapimg').attr('src', url);
-    $('#mapimg').css({'width':dimensions.width,
-     'height': dimensions.height
+    $('#mapscreen, #mapmarkers, #mapimg').css({
+        'width':dimensions.width,
+        'height': dimensions.height
     });
 }
 
@@ -132,8 +133,9 @@ function remakeMarkers(previousSnapshot){
     //delete current markers and change to previousSnapshot
     $("#mapmarkers").empty();
 
-    for (marker of projJson.markers){
-        addExistingMarker(marker.xPos, marker.yPos, marker.id, marker.icon, marker.iconSize);
+    for (key of Object.keys(projJson.markers)){
+        var marker = projJson.markers[key];
+        addExistingMarker(marker.pos, marker.icon, marker.iconSize);
     }
     newChanges(false);
 }
@@ -176,9 +178,9 @@ function makeid(length) {
 
     $('.editingMarker').attr('src', newIcon);
 
-    projJson.markers.forEach(marker =>{
-        if(idToBeChanged.includes(marker.id)){
-            marker.icon = newIcon;
+    Object.keys(projJson.markers).forEach(markerId =>{
+        if(idToBeChanged.includes(markerId)){
+            projJson.markers[markerId].icon = newIcon;
         }
     });
     newChanges();
@@ -218,19 +220,33 @@ function updateMarkerPos(){
         throw "Marker position updated without propper number of sleected markers"
     }
 
-    var fromLeft = $('.editingMarker').css('left');
-    var fromTop = $('.editingMarker').css('top');
+    var offsets = getOffsets('.editingMarker')
 
-    markers.forEach(marker =>{
-        if(marker.id === markerID){
-            if(marker.xPos === fromLeft && marker.yPos === fromTop){
+    Object.keys(markers).forEach(markerId =>{
+        if(markerId === markerID){
+            var marker = markers[markerId];
+
+            if(marker.pos.x === offsets.x && marker.pos.y === offsets.y){
                 return;
             }
-            marker.xPos = fromLeft;
-            marker.yPos = fromTop;
+            marker.pos = offsets;
             newChanges();
             return;
         }
+    });
+}
+
+//only used from drag file
+function reapplyPerc(el){
+    var offsets = getOffsets(el);
+    var papaDimensions = getDimensions("#mapscreen");
+    var percOffsets = {
+        x: offsets.x / papaDimensions.x * 100,
+        y: offsets.y / papaDimensions.y * 100
+    }
+    $(el).css({
+       'left':percify(percOffsets.x),
+       'top': percify(percOffsets.y) 
     });
 }
 
@@ -242,8 +258,9 @@ function loadIcons(projectName){
     //add icons from project
     const markers = projJson.markers;
 
-    markers.forEach(marker =>{
-        addExistingMarker(marker.xPos, marker.yPos, marker.id, marker.icon, marker.iconSize)
+    Object.keys(markers).forEach(markerId =>{
+        var marker = markers[markerId];
+        addExistingMarker(marker.pos, markerId, marker.icon, marker.iconSize)
     });
 }
 
@@ -256,9 +273,6 @@ function loadProject(projectName){
     //$("#sizeAdjustor").css('visibility', 'hidden');
 
     changeZoom(0);//also updates mapzoom
-    //$('#mapscreen').css('zoom', mapZoom);dont think I need this
-    //$('#mapmarkers').css("zoom", mapZoom);
-    $('#mapmarkers').css("transform", 'scale('+mapZoom+','+mapZoom+')');
 
     const imgDir = 'projects/'+projectName+'/image.jpg'
 
@@ -274,51 +288,57 @@ function loadProject(projectName){
     updateOperationStack();
 }
 
-//XXX this works very strangely when zoomed out
+//XXX this works very strangely with offsets, calculations are off somewhere
 function addNewMarker(currX, currY){
-    console.log("currx was just "+currX);
-    currX /= mapZoom;
-    currY /= mapZoom;
 
-    console.log("currx is now "+currX);
     ipcRenderer.send('change:redo', true);
     var imgWidth = parseInt($('#iconResizeInput').val());
 
+    if(isNaN(imgWidth)){
+        imgWidth = defaultImgSize;
+    }
     if(imgWidth < minImgSize){imgWidth = minImgSize;}
     if(imgWidth > maxImgSize){imgWidth = maxImgSize;}
 
-    var halfImgWidth;
-    if(isNaN(imgWidth)){
-        halfImgWidth = defaultImgSize / 2;
+    var canvasOffset = getOffsets("#mapscreen");
+
+    var absPosition = {
+        x: currX-canvasOffset.x-(imgWidth/2),
+        y: currY-canvasOffset.y-(imgWidth/2)
     }
-    else{
-        halfImgWidth = Math.round(imgWidth / 2);
-    }
-
-    canvasX = parseInt($('#mapscreen').css('left'));
-    canvasY = parseInt($('#mapscreen').css('top'));
-
-    practicalX = currX-halfImgWidth-canvasX;
-    practicalY = currY-halfImgWidth-canvasY;
-
+    
     var id = makeid(12);
 
     var icon = currentMarkerIcon;
-    addJsonMarker(practicalX, practicalY, id, halfImgWidth*2);
+    addJsonMarker(absPosition, id, imgWidth);
 
-    var markerElement = addExistingMarker(practicalX, practicalY, id, icon, halfImgWidth*2)
+    var markerElement = addExistingMarker(absPosition, id, icon, imgWidth);
 
     highlightMarker(markerElement, id);
 }
 
-function addExistingMarker(fromLeft, fromTop, id, icon, iconSize){
+/*absposition in form {x: num, y: num} id is a str,
+ icon is str of img it shows as, iconsize is num, how big icon is */
+function addExistingMarker(absPosition, id, icon, iconSize){
     var markerElement = document.createElement("IMG");
 
+    var canvasDimensions = getDimensions("#mapscreen");
+
+    var percSize = {
+        x: iconSize / canvasDimensions.x*100,
+        y: iconSize / canvasDimensions.y*100
+    }
+
+    var percPosition = {
+        x: absPosition.x / (canvasDimensions.x)*100,
+        y: absPosition.y / (canvasDimensions.y)*100
+    }
+
     $(markerElement).attr('src', icon).css({
-        'left': fromLeft,
-        'top': fromTop,
+        'left': percify(percPosition.x),
+        'top': percify(percPosition.y),
         'position':'absolute'
-    }).attr('id', id).addClass('marker').width(iconSize).height(iconSize);
+    }).attr('id', id).addClass('marker').width(percify(percSize.x)).height(percify(percSize.y));
 
     dragMarker(markerElement, id);
 
@@ -358,9 +378,11 @@ function deselectMarker(){
 
 function setMarkerText(elmnt, elementID){
     $("#markertools").css('visibility', 'visible');
+    console.log(projJson);
 
-    projJson.markers.forEach(marker => {
-        if(marker.id === elementID){
+    Object.keys(projJson.markers).forEach(markerId => {
+        if(markerId === elementID){
+            var marker = projJson.markers[markerId];
             if(highlightedMarker === elmnt){
                 return;//is already there
             }
@@ -381,8 +403,9 @@ function saveMarkerText(){
     var titleToBeSaved = $('#titleText').val();
     var iconSizeToSave = $('#iconResizeInput').val();
 
-    projJson.markers.forEach(marker => {
-        if(marker.id === markerID){
+    Object.keys(projJson.markers).forEach(markerId => {
+        if(markerId === markerID){
+            var marker = projJson.markers[markerId];
             if(marker.note === textToBeSaved &&
             marker.title === titleToBeSaved && 
             iconSizeToSave == marker.iconSize){
@@ -414,10 +437,10 @@ function deleteMarker(){
     var idToBeDeleted = getEditedIds();
     console.log("about to delete "+idToBeDeleted);
 
-    var remainingMarkers=[];
-    for (marker of projJson.markers){
-        if(!idToBeDeleted.includes(marker.id)){//if shouldnt be deleted
-            remainingMarkers.push(marker);
+    var remainingMarkers={};
+    for (markerId of Object.keys(projJson.markers)){
+        if(!idToBeDeleted.includes(markerId)){//if shouldnt be deleted
+            remainingMarkers[markerId] = projJson.markers[markerId];
         }
     }
     $("#markertools").css('visibility', 'hidden');
@@ -441,17 +464,16 @@ function projectReset(){
     //loadIcons(projectName);
 }
 
-function addJsonMarker(xPosition, yPosition, markerID, markerSize){
-    var newMarker = {
-        id:markerID,
+function addJsonMarker(position, markerID, markerSize){
+    
+    projJson.markers[markerID] = {
+        //id:markerID,
         icon: currentMarkerIcon,
         iconSize: markerSize,
-        xPos: xPosition,
-        yPos: yPosition,
+        pos: position,
         title: '',
         note: ''
     }
-    projJson.markers.push(newMarker);
     newChanges();
 }
 
@@ -493,7 +515,6 @@ function updateMarkerIconSize(direction=null){
 
 //XXX this needs to be tested when selecting multiple elements
 function setMarkerSize(imgSize){
-    console.log("new size is "+imgSize);
 
     if(imgSize < minImgSize){
         imgSize = minImgSize
@@ -507,20 +528,23 @@ function setMarkerSize(imgSize){
 
     var markersEditing = $('.editingMarker');
     var highLightIds = Object.create(null);
+    var canvasSize = getDimensions("#mapscreen");
 
+    //update markers themselves
     var markerObject = markersEditing.each(function(){
         currMarker = $(this);
 
-        var currentSize = parseInt(currMarker.css('width'));
+        var currentSize = parseInt(currMarker.css('width'));//width and height are same
         var currentTop = parseInt(currMarker.css('top'));
+
         var currentLeft = parseInt(currMarker.css('left'));
         var currId = currMarker.attr('id');
 
         var shiftAmount = Math.round((imgSize - currentSize)/2);
         //update position so moves symetrically
         currMarker.css({
-            'left': currentLeft-shiftAmount+'px',
-            'top': currentTop-shiftAmount+'px'
+            'left': percify((currentLeft-shiftAmount)/canvasSize.x*100),
+            'top': percify((currentTop-shiftAmount)/canvasSize.y*100)
         });
 
         highLightIds[currId] = shiftAmount;
@@ -529,21 +553,26 @@ function setMarkerSize(imgSize){
 
 
     //update values on json
-    var markerId;
-    projJson.markers.forEach(marker => {
-        markerId = marker.id;
+    Object.keys(projJson.markers).forEach(markerId => {
         if(highLightIds[markerId] != undefined){
+            var marker = projJson.markers[markerId];
+
             marker.iconSize = imgSize;
-            marker.yPos = parseInt(marker.yPos)- highLightIds[markerId];
-            marker.xPos = parseInt(marker.xPos)-highLightIds[markerId];
+            marker.pos = {
+                x: parseInt(marker.pos.x)- highLightIds[markerId],
+                y: parseInt(marker.pos.y)- highLightIds[markerId]
+            }
         }
     });
 
 
 
     //set height and width for all of them
-    $(markerObject).width(imgSize);
-    $(markerObject).height(imgSize);//is square
+    var percWidth = percify(imgSize/canvasSize.x*100);
+    var percHeight = percify(imgSize/canvasSize.y*100);
+
+    $(markerObject).width(percWidth);
+    $(markerObject).height(percHeight);
 
     //change saved scale
     saveMarkerText();
@@ -575,15 +604,16 @@ function updateMapSize(direction, e){
     }
     //lucZoom(oldZoom, newZoom, e);
 
-    $('#mapmarkers').css("zoom", newZoom);
-    //console.log("scale is now "+'scale('+newZoom+','+newZoom+')');
-    //$('#mapmarkers').css('transform', 'scale('+newZoom+','+newZoom+')');
-    //$('#mapscreen').css('zoom', newZoom);//XXX bugge when selecting  
-    
-    $('#mapimg').css({
-        'width':Math.round(trueImageWidth*newZoom),
-        'height':Math.round(trueImageHeight*newZoom)
+    var newDimensions = {
+        x:Math.round(trueImageWidth*newZoom),
+        y:Math.round(trueImageHeight*newZoom)
+    }
+
+    $("#mapscreen, #mapmarkers, #mapimg").css({
+        'width': newDimensions.x,
+        'height': newDimensions.y
     });
+    
     //move map so centered on mouse
     zoomOffsetCompensation(oldZoom, newZoom, e);
 }
@@ -631,6 +661,29 @@ function setMouseMode(newMode){
     mouseMode=newMode;
     $("#togglebuttons").children().removeClass("currentmousemode");
     $("."+newMode).addClass("currentmousemode");
+}
+
+/* very simple, just here in case I need to change them all at once */
+function percify(num){
+    return num+"%"
+}
+
+/* returns width and height css values in object, access via .x and .y */
+function getDimensions(selector){
+    var dimensions = {
+        x: parseInt($(selector).css('width')),
+        y: parseInt($(selector).css('height'))
+    }
+    return dimensions;
+}
+
+/* returns left and top css values in object, access via .x and .y */
+function getOffsets(selector){
+    var offsets = {
+        x: parseInt($(selector).css('left')),
+        y: parseInt($(selector).css('top'))
+    }
+    return offsets;
 }
 
 function saveFile(){
@@ -771,9 +824,5 @@ $('#bgmaterial, #mapscreen').on('click', function(e){
             throw 'mouse mode in something other than view, edit or add';*/
     }
 });
-
-/*$(window).on('resize', function(){
-    //XXX
-});*/
 
 makeMarkerOptions();

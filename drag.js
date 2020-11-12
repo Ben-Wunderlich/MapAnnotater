@@ -71,8 +71,8 @@ function dragMarker(elmnt, id) {
     e = e || window.event;
     //e.preventDefault();
     // get the mouse cursor position at startup:
-    pos3 = e.clientX/mapZoom;
-    pos4 = e.clientY/mapZoom;
+    pos3 = e.clientX;
+    pos4 = e.clientY;
     
     document.onmouseup = closeDragElement;
     // call a function whenever the cursor moves:
@@ -83,10 +83,10 @@ function dragMarker(elmnt, id) {
     e = e || window.event;
     //e.preventDefault();
     // calculate the new cursor position:
-    pos1 = pos3 - e.clientX/mapZoom;
-    pos2 = pos4 - e.clientY/mapZoom;
-    pos3 = e.clientX/mapZoom;
-    pos4 = e.clientY/mapZoom;
+    pos1 = pos3 - e.clientX;
+    pos2 = pos4 - e.clientY;
+    pos3 = e.clientX;
+    pos4 = e.clientY;
 
     // set the element's new position:
     elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
@@ -95,7 +95,9 @@ function dragMarker(elmnt, id) {
 
   function closeDragElement() {
     iconBeignDragged = false;
+
     // stop moving when mouse button is released:
+    reapplyPerc(elmnt);
     updateMarkerPos();
     document.onmouseup = null;
     document.onmousemove = null;
