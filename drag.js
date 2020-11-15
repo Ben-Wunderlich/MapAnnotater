@@ -6,18 +6,25 @@
 var iconBeignDragged = false;
 
 function dragElement(elmnt) {
-  var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+  var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0; mouseButt=null;
   elmnt.onmousedown = dragMouseDown;
 
   function dragMouseDown(e) {
-    if(mouseMode === 'edit'){
+    usingMiddle = e.which == 2;
+
+    if(usingMiddle){
+      e.preventDefault();
+      deselectMarker();
+    }
+
+    if(!usingMiddle && mouseMode === 'edit'){
       if(!iconBeignDragged){
         saveMarkerText();
         deselectMarker();
       }
       return;
     }
-    else if(mouseMode === 'add'){
+    else if(!usingMiddle && mouseMode === 'add'){
       return;
     }
 
