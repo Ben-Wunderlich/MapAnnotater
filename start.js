@@ -582,14 +582,15 @@ function setMarkerSize(imgSize){
     markersEditing.each(function(){
         currMarker = $(this);
 
-        var currentSize = currMarker.css('width');//width and height are same
-        var currentTop = currMarker.css('top');
+        var currentSize = parseFloat(currMarker.css('width'));//width and height are same
+        var currentTop = parseFloat(currMarker.css('top'));
 
-        var currentLeft = currMarker.css('left');
+        var currentLeft = parseFloat(currMarker.css('left'));
         var currId = currMarker.attr('id');
 
+        console.log("dif between "+imgSize + " "+currentSize);  
         var shiftAmount = (imgSize - currentSize)/2;
-        console.log("they are "+currentSize + " "+imgSize);
+        console.log("shift by "+shiftAmount);
         //update position so moves symetrically
         currMarker.css({
             'left': percify((currentLeft-shiftAmount)/canvasSize.x*100),
@@ -614,7 +615,6 @@ function setMarkerSize(imgSize){
         }
     });
 
-    console.log("im past it");
     //set height and width for all of them
     var percWidth = percify(imgSize/canvasSize.x*100);
     var percHeight = percify(imgSize/canvasSize.y*100);
