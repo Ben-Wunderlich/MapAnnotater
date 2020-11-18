@@ -20,7 +20,7 @@ var markerID;//id of highlighted marker
 var currentMarkerIcon;
 
 const defaultImgSize = 24;
-const minImgSize = 5;
+const minImgSize = 8;
 const maxImgSize = 500;
 $("#iconResizeInput").attr('min', minImgSize).attr('max', maxImgSize);
 
@@ -236,15 +236,15 @@ function updateMarkerPos(){
     but when reloaded will be with respect to absolute dimensions */
     //var papaDimensions = getDimensions("#mapscreen");
     var relPos = {
-        x: offsets.x /mapZoom,
-        y: offsets.y /mapZoom
+        x: Math.round(offsets.x /mapZoom),
+        y: Math.round(offsets.y /mapZoom)
     };
 
     var marker = projJson.markers[markerID];
     if(marker.pos.x === relPos.x && marker.pos.y === relPos.y){
         return;
     }
-    marker.pos = Math.round(relPos);
+    marker.pos = relPos;
     newChanges();
     return;
 }
@@ -281,7 +281,7 @@ function loadIcons(){
 function loadProject(projectName){
     console.log("now opening ".concat(projectName));
     ipcRenderer.send('setTitle', projectName);
-    $('#rightbar').css('visibility', 'visible');
+    $('#rightbar, #mapscreen').css('visibility', 'visible');
     $('#welcomeMessage').css('visibility', 'hidden');
     setToolsVisibility(false);
     //$("#sizeAdjustor").css('visibility', 'hidden');
@@ -306,13 +306,13 @@ function loadProject(projectName){
 function addNewMarker(currX, currY){
 
     ipcRenderer.send('change:redo', true);
-    var imgWidth = parseInt(getIconSize());
+    var imgWidth = getIconSize();
 
     if(isNaN(imgWidth)){
-        imgWidth = defaultImgSize;
+        imgWidth = defaultImgSize*mapZoom;
     }
-    if(imgWidth*mapZoom < minImgSize){imgWidth = minImgSize*mapZoom;}
-    if(imgWidth*mapZoom > maxImgSize){imgWidth = maxImgSize*mapZoom;}
+    if(imgWidth < minImgSize*mapZoom){imgWidth = minImgSize*mapZoom;}
+    if(imgWidth > maxImgSize*mapZoom){imgWidth = maxImgSize*mapZoom;}
 
     var canvasOffset = getOffsets("#mapscreen");
 
@@ -320,28 +320,41 @@ function addNewMarker(currX, currY){
         x: currX-canvasOffset.x-(imgWidth/2),
         y: currY-canvasOffset.y-(imgWidth/2)
     }
+
+    var truePos = {
+        x: absPosition.x / mapZoom,
+        y: absPosition.y / mapZoom
+    }
     
     var id = makeid(12);
 
     var icon = currentMarkerIcon;
     addJsonMarker(absPosition, id, imgWidth);
 
-    var markerElement = addExistingMarker(absPosition, id, icon, imgWidth);
+    var markerElement = addExistingMarker(truePos, id, icon, imgWidth);//XXX ned put relative to orig
 
     highlightMarker(markerElement, id);
 }
 
-/*absposition in form {x: num, y: num} id is a str,
+/*absposition in form {x: num, y: num} id is a str, re;ative to curr size
  icon is str of img it shows as, iconsize is num, how big icon is */
 function addExistingMarker(absPosition, id, icon, iconSize){
     var markerElement = document.createElement("IMG");
 
     var canvasDimensions = getDimensions("#mapscreen");
 
+    //convert to relative to current map
+    absPosition = {
+        x: absPosition.x * mapZoom,
+        y: absPosition.y * mapZoom
+    };
+    iconSize *= mapZoom;
+
+
     var percSize = {
         x: iconSize / canvasDimensions.x*100,
         y: iconSize / canvasDimensions.y*100
-    }
+    };
 
     var percPosition = {
         x: absPosition.x / (canvasDimensions.x)*100,
@@ -384,7 +397,7 @@ function deselectMarker(){
     clearText();
     highlightedMarker = undefined;
     markerID = undefined;
-    setToolsVisibility(false)
+    setToolsVisibility(false);
 }
 
 function setMarkerText(elmnt){
@@ -399,29 +412,25 @@ function setMarkerText(elmnt){
     $('#mainText').val(marker.note);
     $('#titleText').val(marker.title);
     //$('#iconResizeInput').val(relIconSize);
-    setIconSize(marker.iconSize);
+    setIconSize(marker.iconSize, true);//will be in reference to true not current
     return;
 }
 
 function saveMarkerText(){
-    if($('.editingMarker').length === 0){
-        return;
-    }
-
-    if(highlightedMarker == undefined){
+    if($('.editingMarker').length === 0 || highlightedMarker == undefined){//XXX this is bad?
         return;
     }
 
     var textToBeSaved = $('#mainText').val();
     var titleToBeSaved = $('#titleText').val();
     //var iconSizeToSave = $('#iconResizeInput').val();XXX maybe wont work
-    var iconSizeToSave = getIconSize();
+    var iconSizeToSave = getIconSize(true);
 
     var marker = projJson.markers[markerID];
     if(marker.note === textToBeSaved &&
     marker.title === titleToBeSaved && 
     iconSizeToSave == marker.iconSize){
-        console.log("no change");
+        console.log("no change "+iconSizeToSave + " "+marker.iconSize);
         return;
     }
 
@@ -460,18 +469,27 @@ function deleteMarker(){
 }
 
 //resets the window to be blank
-function projectReset(){
+function projectReset(){//XXX1
     ipcRenderer.send('setTitle', 'Map Annotater');
     $('#rightbar').css('visibility', 'hidden');
     $('#welcomeMessage').css('visibility', 'visible');
+    setToolsVisibility(false);
+    $('#mapmarkers').empty();
 
     clearText()
 
-    $("#mapscreen").removeAttr('style');
+    $('#mapscreen').css({
+        'top':'0px', 
+        'left':'0px',
+        'visibility': 'hidden'
+    });
+
+    //$("#mapimg").removeAttr("src");
 
     $('#mapmarkers').empty();
 }
 
+/* takes in position and markersize relative to current size, check to see if that is happening XXX */
 function addJsonMarker(position, markerID, markerSize){
 
     //var papaDimensions = getDimensions("#mapscreen");
@@ -482,6 +500,7 @@ function addJsonMarker(position, markerID, markerSize){
         x: Math.round(position.x /mapZoom),
         y: Math.round(position.y /mapZoom)
     };
+    console.log(relPos);
     var relSize = Math.round(markerSize / mapZoom);//could use width or height
     
     //save marker information on json obj itself
@@ -500,54 +519,54 @@ function updateMarkerIconSize(direction=null){
     //do on button push, also on save and on scroll wheel, change by 10%
     //when press button, change number itself then call this
     
-    //var originalStr = $('#iconResizeInput').val();
-    var originalStr = getIconSize();
+    //var originalNum = $('#iconResizeInput').val();
+    var originalNum = getIconSize();
+    console.log("origion is "+originalNum);
 
-    if(isNaN(originalStr)){//if isnt a number
+    if(isNaN(originalNum)){//if isnt a number
         console.log('not a num');
-        setMarkerSize(defaultImgSize);
+        setMarkerSize(defaultImgSize*mapZoom);
         return;
     }
 
-    var originalNum = parseInt(originalStr);
     if(direction === null){
         setMarkerSize(originalNum);
         console.log('marker size set manually');
         return;
-    } 
+    }
 
     var newNum;
     if(direction){
-        newNum = originalNum * 1.1;
+        newNum = (originalNum * 1.1);
     }
     else{
-        newNum = originalNum * 0.9;
+        newNum = (originalNum * 0.9);
     }
-    newNum = Math.round(newNum);
+    newNum = newNum;
 
     /* if nothing changed */
-    if(newNum*mapZoom < minImgSize || newNum*mapZoom > maxImgSize){
-        console.log("too much");
+    if((newNum < minImgSize*mapZoom && !direction)
+        || (newNum > maxImgSize*mapZoom && direction)){
+        console.log("too much "+(newNum) );
         return;
-    }
+    }//XXX might have needed this
 
-    setMarkerSize(newNum);
+    setMarkerSize(newNum);//passes relative to current
 
 }
 
-//XXX this needs to be tested when selecting multiple elements and could be greatly optimized
+/*XXX does not work when zoom out then resize with mouse wheel */
+/* takes size relative to current*/
 function setMarkerSize(imgSize){
 
-    if(imgSize < minImgSize){
-        imgSize = minImgSize;
-    }
-    else if(imgSize > maxImgSize*mapZoom){
-        imgSize = maxImgSize*mapZoom;
+    var asbSize = imgSize/mapZoom
+    if(asbSize < minImgSize || asbSize > maxImgSize){
+        return;
     }
 
     //change value in table
     //$('#iconResizeInput').val(imgSize);
-    setIconSize(imgSize);
+    setIconSize(imgSize, false);
 
     var markersEditing = $('.editingMarker');
     if(markersEditing.length == 0){//if no element to change
@@ -563,13 +582,14 @@ function setMarkerSize(imgSize){
     markersEditing.each(function(){
         currMarker = $(this);
 
-        var currentSize = parseInt(currMarker.css('width'));//width and height are same
-        var currentTop = parseInt(currMarker.css('top'));
+        var currentSize = currMarker.css('width');//width and height are same
+        var currentTop = currMarker.css('top');
 
-        var currentLeft = parseInt(currMarker.css('left'));
+        var currentLeft = currMarker.css('left');
         var currId = currMarker.attr('id');
 
-        var shiftAmount = Math.round((imgSize - currentSize)/2);
+        var shiftAmount = (imgSize - currentSize)/2;
+        console.log("they are "+currentSize + " "+imgSize);
         //update position so moves symetrically
         currMarker.css({
             'left': percify((currentLeft-shiftAmount)/canvasSize.x*100),
@@ -581,7 +601,7 @@ function setMarkerSize(imgSize){
 
     //redefine it in terms of original size
     //var papaDimensions = getDimensions("#mapscreen");
-    var relImgSize = Math.round(imgSize / mapZoom);//could use width or height
+    var relImgSize = Math.round(imgSize / mapZoom);
 
     //update values on json
     Object.keys(highLightIds).forEach(markerId => {
@@ -594,8 +614,7 @@ function setMarkerSize(imgSize){
         }
     });
 
-
-
+    console.log("im past it");
     //set height and width for all of them
     var percWidth = percify(imgSize/canvasSize.x*100);
     var percHeight = percify(imgSize/canvasSize.y*100);
@@ -728,19 +747,26 @@ function getOffsets(selector){
     return offsets;
 }
 
-/* gets value of #iconResizeInput and converts to relative pixel size */
-function getIconSize(){
+/* gets value of #iconResizeInput and converts to relative pixel size 
+if specify getTrue it will give you relative to original image*/
+function getIconSize(getTrue=false){
     var imgSize = $('#iconResizeInput').val();
     if(isNaN(imgSize)){
-        return NaN;
+        return "z";
     }
-    imgSize *= mapZoom;
+    if(!getTrue){
+        imgSize *= mapZoom;
+    }
     return imgSize;
 }
 
-function setIconSize(newSize){
-    var relToTrue = Math.round(newSize / mapZoom);
-    $('#iconResizeInput').val(relToTrue);
+/* takes value of icon size in pixels, already true if is relative to original picture */
+function setIconSize(newSize, alreadyTrue=false){
+    if(!alreadyTrue){
+        newSize = Math.round(newSize / mapZoom);
+    }
+    //console.log("it be "+newSize);
+    $('#iconResizeInput').val(newSize);
 }
 
 function saveFile(){
@@ -852,7 +878,7 @@ $('#editMouse').on('click', function(){
     setMouseMode("edit");
 });
 
-$('.marker').on('click', function(event){
+$('.marker, #mapmarkers').on('click', function(event){
     event.preventDefault();
 });
 

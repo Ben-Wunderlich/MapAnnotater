@@ -24,10 +24,15 @@ const {app, BrowserWindow, Menu, ipcMain} = electron;
 //process.env.NODE_ENV = 'production';
 
 let startWindow;
-let currentProjectTitle
+let currentProjectTitle = -1;
 
 var unsavedWork = false;
-var quitAfterSaving = false;
+
+const NOTHING = -1;
+const NEW = 0;
+const OPEN = 1;
+const QUIT = 2
+var toDoAfterSaving = NOTHING;
 
 
 // listen for app to be ready
@@ -55,26 +60,21 @@ app.on('ready', function(){
 
     //quit app when closed
     startWindow.on('close', function(e){
-        if(unsavedWork){
-            var choice = dialog.showMessageBoxSync(this,
-                {
-                  type: 'question',
-                  buttons: ['save and quit', "don't save", 'cancel'],
-                  title: 'Confirm',
-                  message: 'You have unsaved work, do you still want to exit?'
-               });
-               if(choice === 2){//cancel
-                e.preventDefault();
-               }
-               else if(choice === 0){//save and quit
-                    e.preventDefault();
-                    quitAfterSaving = true;
-                    startWindow.webContents.send('project:save');
-               }
-               //for choice 1 if not want to save just donw prevent default
+        var userChoice = unsavedWorkCheck();
+
+        if(userChoice == 0){//save and quit
+            e.preventDefault();
+            toDoAfterSaving = QUIT;
+            startWindow.webContents.send('project:save');
         }
-        else{
-            app.quit();
+        else if(userChoice == 1){//quit without saving
+            //just dont prevent default
+        }
+        else if(userChoice == 2){// if is cancel
+            e.preventDefault();
+        }
+        else{//some kind of error
+            console.log("ERROR ON ISLE 4!");
         }
     });
 
@@ -172,6 +172,42 @@ function getJson(projectName){
     });
 }
 
+/* called after saving to see if anything was waiting for a save */
+function afterSaveCheck(){
+    /*switch(toDoAfterSaving){
+        case NOTHING:
+            break;
+        case NEW:
+            NewProjectMenu();
+            break;
+        case OPEN:
+            chooseProject();
+            break;
+        case QUIT:
+            app.quit();
+        default:
+            console.log("ERROR ON SOME ISLE OR OTHER "+toDoAfterSaving);
+
+    }*/
+
+    if(toDoAfterSaving == NOTHING){
+        //do nothing
+    }
+    else if(toDoAfterSaving == NEW){
+        NewProjectMenu();
+    }
+    else if(toDoAfterSaving == OPEN){
+        chooseProject();
+    }
+    else if(toDoAfterSaving == QUIT){
+        app.quit();
+    }
+    else{
+        console.log("ERROR ON SOME ISLE OR OTHER "+toDoAfterSaving);
+    }
+    toDoAfterSaving = NOTHING;
+}
+
 function projectFolderisValid(projPath, title){
     if (fs.existsSync(projPath) &&
     fs.existsSync(path.join(projPath, title+".json")) &&
@@ -206,6 +242,21 @@ function chooseProject(){
     });*/
 }
 
+function unsavedWorkCheck(){
+    if(unsavedWork){
+        var choice = dialog.showMessageBoxSync(
+            {
+              type: 'question',
+              buttons: ['save and quit', "don't save", 'cancel'],
+              title: 'Confirm',
+              message: 'You have unsaved work, do you still want to exit?'
+           });
+        return choice;
+    }
+    else{
+        return 1;//nothing to save
+    }
+}
 
 function deleteVerify(){
     var choice = dialog.showMessageBoxSync(
@@ -218,7 +269,7 @@ function deleteVerify(){
     if(choice === 0){//cancel
         return true;
     }
-    else {
+    else {//kill it
         return false;
     }
 }
@@ -265,9 +316,8 @@ ipcMain.on('project:savefile', function(e, fileContents){
         if(err) throw err;
         console.log("The file was saved!");
     }); 
-    if(quitAfterSaving){
-        app.quit();
-    }
+
+    afterSaveCheck()
 });
 
 ipcMain.on('change:redo', function(e, isEnabled){
@@ -303,14 +353,52 @@ const mainMenuTemplate = [
             label:'new project',
             accelerator: "Ctrl+N",
             click(){
-                NewProjectMenu();
+                if(currentProjectTitle != -1){
+                    var userChoice = unsavedWorkCheck();
+
+                    if(userChoice == 0){//save and quit
+                        toDoAfterSaving = NEW;
+                        startWindow.webContents.send('project:save');
+                    }
+                    else if(userChoice == 1){//quit without saving
+                        NewProjectMenu();
+                    }
+                    else if(userChoice == 2){// if is cancel
+                       //do nothing
+                    }
+                    else{//some kind of error
+                        console.log("ERROR ON ISLE 6!");
+                    }
+                }
+                else{
+                    NewProjectMenu();
+                }
             },
         },
         {
             label:'open',
             accelerator: 'Ctrl+O',
             click(){
-                chooseProject();
+                if(currentProjectTitle != -1){
+                    var userChoice = unsavedWorkCheck();
+
+                    if(userChoice == 0){//save and quit
+                        toDoAfterSaving = OPEN;
+                        startWindow.webContents.send('project:save');
+                    }
+                    else if(userChoice == 1){//quit without saving
+                        chooseProject();
+                    }
+                    else if(userChoice == 2){// if is cancel
+                       //do nothing
+                    }
+                    else{//some kind of error
+                        console.log("ERROR ON ISLE 5!");
+                    }
+                }
+                else{
+                    chooseProject();
+                }
             }
         },
         {
@@ -334,6 +422,7 @@ const mainMenuTemplate = [
 
                     //delete files
                     deleteProjectFiles();
+                    currentProjectTitle = -1;
                 }
             }
         }
