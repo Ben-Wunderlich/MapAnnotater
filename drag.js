@@ -9,12 +9,14 @@ function dragElement(elmnt) {
   var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0; mouseButt=null;
   elmnt.onmousedown = dragMouseDown;
 
+  const moveEl = $("#mapscreen")[0];
+
   function dragMouseDown(e) {
     usingMiddle = e.which == 2;
 
     if(usingMiddle){
       e.preventDefault();
-      deselectMarker();
+      //deselectMarker();
     }
 
     if(!usingMiddle && mouseMode === 'edit'){
@@ -47,8 +49,9 @@ function dragElement(elmnt) {
     pos3 = e.clientX;
     pos4 = e.clientY;
     // set the element's new position:
-    elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
-    elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+
+    moveEl.style.top = (moveEl.offsetTop - pos2) + "px";
+    moveEl.style.left = (moveEl.offsetLeft - pos1) + "px";
   }
 
   function closeDragElement() {
@@ -60,7 +63,7 @@ function dragElement(elmnt) {
 
 
 
-dragElement($('#mapscreen')[0]);
+dragElement($('#bgmaterial')[0]);
 
 function dragMarker(elmnt, id) {
   var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;

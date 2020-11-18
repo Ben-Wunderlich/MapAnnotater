@@ -251,6 +251,9 @@ function unsavedWorkCheck(){
               title: 'Confirm',
               message: 'You have unsaved work, do you still want to exit?'
            });
+        if(choice==1){
+            unsavedWork = false;
+        }
         return choice;
     }
     else{

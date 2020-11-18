@@ -21,7 +21,7 @@ var currentMarkerIcon;
 
 const defaultImgSize = 24;
 const minImgSize = 8;
-const maxImgSize = 500;
+const maxImgSize = 506;
 $("#iconResizeInput").attr('min', minImgSize).attr('max', maxImgSize);
 
 const zoomLevels = [
@@ -67,9 +67,9 @@ var redoStack = [];
 var mouseMode;
 
 var selectio = new DragSelect({
-    area: document.getElementById('mapscreen'),
-    onDragStart: function() {
-        if(mouseMode!='edit'){
+    area: document.getElementById('bgmaterial'),
+    onDragStart: function(e) {
+        if(mouseMode!='edit' || e.which==2){
             selectio.break();
         }
     },
@@ -143,7 +143,7 @@ function remakeMarkers(previousSnapshot){
     for (key of Object.keys(projJson.markers)){
         var marker = projJson.markers[key];
 
-        addExistingMarker(marker.pos, marker.icon, marker.iconSize);
+        addExistingMarker(marker.pos, key, marker.icon, marker.iconSize);
     }
     newChanges(false);
 }
@@ -230,11 +230,8 @@ function updateMarkerPos(){
 
     var offsets = getOffsets('.editingMarker');
 
-    //XXX need to recalulate for main image size
-
     /* need to adjust because currently defined with respect to current not dimensions
     but when reloaded will be with respect to absolute dimensions */
-    //var papaDimensions = getDimensions("#mapscreen");
     var relPos = {
         x: Math.round(offsets.x /mapZoom),
         y: Math.round(offsets.y /mapZoom)
@@ -263,8 +260,6 @@ function reapplyPerc(el){
     });
 }
 
-
-//XXX loading icons in wrong place with wrong scale
 function loadIcons(){
     //clear previous markers
     $('#mapmarkers').empty();
@@ -284,6 +279,8 @@ function loadProject(projectName){
     $('#rightbar, #mapscreen').css('visibility', 'visible');
     $('#welcomeMessage').css('visibility', 'hidden');
     setToolsVisibility(false);
+    operationStack=[];
+    redoStack = [];
     //$("#sizeAdjustor").css('visibility', 'hidden');
 
     changeZoom(0);//also updates mapzoom
@@ -302,7 +299,6 @@ function loadProject(projectName){
     updateOperationStack();
 }
 
-//XXX this works very strangely with offsets, calculations are off somewhere
 function addNewMarker(currX, currY){
 
     ipcRenderer.send('change:redo', true);
@@ -316,37 +312,39 @@ function addNewMarker(currX, currY){
 
     var canvasOffset = getOffsets("#mapscreen");
 
-    var absPosition = {
-        x: currX-canvasOffset.x-(imgWidth/2),
-        y: currY-canvasOffset.y-(imgWidth/2)
-    }
+    var relCurr = {
+        x: currX-canvasOffset.x - (imgWidth/2),
+        y: currY-canvasOffset.y - (imgWidth/2)
+    };
 
-    var truePos = {
-        x: absPosition.x / mapZoom,
-        y: absPosition.y / mapZoom
-    }
-    
+    var relOrig = {
+        x: Math.round(relCurr.x / mapZoom),
+        y: Math.round(relCurr.y / mapZoom)
+    };
+
     var id = makeid(12);
 
-    var icon = currentMarkerIcon;
-    addJsonMarker(absPosition, id, imgWidth);
+    imgWidth = Math.round(imgWidth/mapZoom);
 
-    var markerElement = addExistingMarker(truePos, id, icon, imgWidth);//XXX ned put relative to orig
+    var icon = currentMarkerIcon;
+    addJsonMarker(relOrig, id, imgWidth);
+
+    var markerElement = addExistingMarker(relOrig, id, icon, imgWidth);
 
     highlightMarker(markerElement, id);
 }
 
-/*absposition in form {x: num, y: num} id is a str, re;ative to curr size
+/*relOgig in form {x: num, y: num} id is a str, re;ative to curr size
  icon is str of img it shows as, iconsize is num, how big icon is */
-function addExistingMarker(absPosition, id, icon, iconSize){
+function addExistingMarker(relOrig, id, icon, iconSize){
     var markerElement = document.createElement("IMG");
 
     var canvasDimensions = getDimensions("#mapscreen");
 
     //convert to relative to current map
-    absPosition = {
-        x: absPosition.x * mapZoom,
-        y: absPosition.y * mapZoom
+    var relCurr = {
+        x: relOrig.x * mapZoom,
+        y: relOrig.y * mapZoom
     };
     iconSize *= mapZoom;
 
@@ -357,8 +355,8 @@ function addExistingMarker(absPosition, id, icon, iconSize){
     };
 
     var percPosition = {
-        x: absPosition.x / (canvasDimensions.x)*100,
-        y: absPosition.y / (canvasDimensions.y)*100
+        x: relCurr.x / (canvasDimensions.x)*100,
+        y: relCurr.y / (canvasDimensions.y)*100
     }
 
     $(markerElement).attr('src', icon).css({
@@ -406,24 +404,20 @@ function setMarkerText(elmnt){
     var marker = projJson.markers[markerID];
     console.log(marker);
 
-    //console.log("it be"+markerID);
-    //var relIconSize = Math.round(marker.iconSize)//XXX
-
     $('#mainText').val(marker.note);
     $('#titleText').val(marker.title);
-    //$('#iconResizeInput').val(relIconSize);
+    
     setIconSize(marker.iconSize, true);//will be in reference to true not current
     return;
 }
 
 function saveMarkerText(){
-    if($('.editingMarker').length === 0 || highlightedMarker == undefined){//XXX this is bad?
+    if($('.editingMarker').length === 0 || highlightedMarker == undefined){
         return;
     }
 
     var textToBeSaved = $('#mainText').val();
     var titleToBeSaved = $('#titleText').val();
-    //var iconSizeToSave = $('#iconResizeInput').val();XXX maybe wont work
     var iconSizeToSave = getIconSize(true);
 
     var marker = projJson.markers[markerID];
@@ -469,7 +463,7 @@ function deleteMarker(){
 }
 
 //resets the window to be blank
-function projectReset(){//XXX1
+function projectReset(){
     ipcRenderer.send('setTitle', 'Map Annotater');
     $('#rightbar').css('visibility', 'hidden');
     $('#welcomeMessage').css('visibility', 'visible');
@@ -484,30 +478,22 @@ function projectReset(){//XXX1
         'visibility': 'hidden'
     });
 
-    //$("#mapimg").removeAttr("src");
-
     $('#mapmarkers').empty();
 }
 
-/* takes in position and markersize relative to current size, check to see if that is happening XXX */
+/* takes in position and markersize relative to true size */
 function addJsonMarker(position, markerID, markerSize){
 
     //var papaDimensions = getDimensions("#mapscreen");
 
     /* need to adjust because currently defined with respect to current not dimensions
     but when reloaded will be with respect to absolute dimensions */
-    var relPos = {
-        x: Math.round(position.x /mapZoom),
-        y: Math.round(position.y /mapZoom)
-    };
-    console.log(relPos);
-    var relSize = Math.round(markerSize / mapZoom);//could use width or height
     
     //save marker information on json obj itself
     projJson.markers[markerID] = {
         icon: currentMarkerIcon,
-        iconSize: relSize,
-        pos: relPos,
+        iconSize: markerSize,
+        pos: position,
         title: '',
         note: ''
     }
@@ -549,13 +535,12 @@ function updateMarkerIconSize(direction=null){
         || (newNum > maxImgSize*mapZoom && direction)){
         console.log("too much "+(newNum) );
         return;
-    }//XXX might have needed this
+    }
 
     setMarkerSize(newNum);//passes relative to current
-
+    ipcRenderer.send('work-unsaved');
 }
 
-/*XXX does not work when zoom out then resize with mouse wheel */
 /* takes size relative to current*/
 function setMarkerSize(imgSize){
 
