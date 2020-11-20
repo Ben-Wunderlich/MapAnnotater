@@ -69,7 +69,7 @@ var mouseMode;
 var selectio = new DragSelect({
     area: document.getElementById('bgmaterial'),
     onDragStart: function(e) {
-        if(mouseMode!='edit' || e.which==2){
+        if(mouseMode!='edit' || e.which==2 || iconBeignDragged){
             selectio.break();
         }
     },
@@ -365,8 +365,9 @@ function addExistingMarker(relOrig, id, icon, iconSize){
         'width': percify(percSize.x),
         'height': percify(percSize.y),
         'position':'absolute'
-    }).attr('id', id).addClass('marker');
+    }).attr('id', id).addClass('marker').attr('draggable', false);
 
+    //console.log('can now drag '+id);
     dragMarker(markerElement, id);
 
     selectio.addSelectables(markerElement);
@@ -402,7 +403,7 @@ function setMarkerText(elmnt){
     setToolsVisibility(true);
 
     var marker = projJson.markers[markerID];
-    console.log(marker);
+    //console.log(marker);
 
     $('#mainText').val(marker.note);
     $('#titleText').val(marker.title);
@@ -507,7 +508,7 @@ function updateMarkerIconSize(direction=null){
     
     //var originalNum = $('#iconResizeInput').val();
     var originalNum = getIconSize();
-    console.log("origion is "+originalNum);
+    //console.log("origion is "+originalNum);
 
     if(isNaN(originalNum)){//if isnt a number
         console.log('not a num');
@@ -555,7 +556,7 @@ function setMarkerSize(imgSize){
 
     var markersEditing = $('.editingMarker');
     if(markersEditing.length == 0){//if no element to change
-        console.log("was a dry run");
+        //console.log("was a dry run");
         return;
     }
 
@@ -873,7 +874,7 @@ $('#mainText').on('onkeyup', function() {
 });
 
 
-$('#bgmaterial, #mapscreen').on('click', function(e){
+$('#bgmaterial, #mapimg').on('click', function(e){
     switch (mouseMode) {
         case 'add': 
             e.preventDefault();

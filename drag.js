@@ -14,15 +14,24 @@ function dragElement(elmnt) {
   function dragMouseDown(e) {
     usingMiddle = e.which == 2;
 
+    if(mouseMode=='edit'){
+      deselectMarker();
+    }
+
     if(usingMiddle){
       e.preventDefault();
       //deselectMarker();
     }
 
+    if(iconBeignDragged){
+      console.log("already being dragged");
+      return;
+    }
+
     if(!usingMiddle && mouseMode === 'edit'){
       if(!iconBeignDragged){
         saveMarkerText();
-        deselectMarker();
+        //deselectMarker();
       }
       return;
     }
@@ -31,7 +40,6 @@ function dragElement(elmnt) {
     }
 
     e = e || window.event;
-    //e.preventDefault();
     // get the mouse cursor position at startup:
     pos3 = e.clientX;
     pos4 = e.clientY;
@@ -61,20 +69,20 @@ function dragElement(elmnt) {
   }
 }
 
-
-
 dragElement($('#bgmaterial')[0]);
+dragElement($('#mapimg')[0]);
 
 function dragMarker(elmnt, id) {
   var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
   elmnt.onmousedown = dragMouseDown;
 
   function dragMouseDown(e) {
-    if (mouseMode !== 'edit'){
+    console.log("DRAGGG MARK");
+    /*if (mouseMode == 'view'){
       return;
-    }
-    selectio.break();
+    }XXX maybe bad idea to remove this*/
     iconBeignDragged = true;
+    selectio.break();
     highlightMarker(elmnt, id);
     e.preventDefault();//otherwise dragging has wierd interaction
 

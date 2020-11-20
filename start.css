@@ -5,9 +5,9 @@ html{
 #bgmaterial{
     position: absolute;
     left: 0%;
-    width: 100%;
-    height: 100%;
-    z-index: 3;
+    width: 100vw;
+    height: 100vh;
+    z-index: -5;
     top: 0%;
 }
 
@@ -47,8 +47,8 @@ button:focus{
     /*width: 90%;
     height: 100%;*/
     float: left;
-    position: absolute;
-    z-index: 1;
+    position: absolute;/*XXX as either -10 or 3 it doesnt work in diff ways
+    actually it is about which of #mapscreen or #bgmaterial is more front */
     /*background-image: url('projects/drggg/image.jpg');*/
 }
 
@@ -70,8 +70,13 @@ button:focus{
     left: 100%;
     left: 0%;
     top: 0%;
-    z-index: 10;
+    z-index: 2;
 }
+
+/*.marker{
+    z-index: 8;
+}*/
+
 #markertools{
     visibility: hidden;
     display: block;
