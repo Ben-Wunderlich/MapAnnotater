@@ -15,12 +15,10 @@
 
     <div id="mapscreen" draggable="false">
         <img id="mapimg" draggable="false">
+        <span id="bgmaterial" draggable="false"></span>
         <span id="mapmarkers" draggable="false"></span>
             <!--<img src="map_markers/blue_bull.png" class="marker" style="left: 120px;top:300px;">-->
-        </span>
     </div>
-
-    <span id="bgmaterial"></span>
 
     <div id="rightbar">
         <div id=toptools class="tools">
@@ -34,7 +32,6 @@
                 <h3 id=iconsizetitle>marker size:</h3>
                 <input type='number' step="1" id='iconResizeInput' value=24>
                 <button id='iconResize'>resize</button>
-                <!-- XXX make this into up and down arrows -->
             </div>
         </div>
 
@@ -55,7 +52,10 @@
             </div>
 
         </span>
+
     </div>
+    <div id='saveel'>saved</div>
+    
     
     <script>window.$ = window.jQuery = require('jquery');</script>
     <script src=start.js></script>

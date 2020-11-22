@@ -17,10 +17,9 @@ function dragElement(elmnt) {
     if(mouseMode=='edit'){
       deselectMarker();
     }
-
+    
     if(usingMiddle){
       e.preventDefault();
-      //deselectMarker();
     }
 
     if(iconBeignDragged){
@@ -66,25 +65,27 @@ function dragElement(elmnt) {
     // stop moving when mouse button is released:
     document.onmouseup = null;
     document.onmousemove = null;
+
+    /* update the background box */
+    updateBgOffsets();
   }
 }
 
 dragElement($('#bgmaterial')[0]);
-dragElement($('#mapimg')[0]);
+//XXXdragElement($('#mapimg')[0]);
 
 function dragMarker(elmnt, id) {
   var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
   elmnt.onmousedown = dragMouseDown;
 
   function dragMouseDown(e) {
-    console.log("DRAGGG MARK");
+    e.preventDefault();
     /*if (mouseMode == 'view'){
       return;
     }XXX maybe bad idea to remove this*/
     iconBeignDragged = true;
     selectio.break();
-    highlightMarker(elmnt, id);
-    e.preventDefault();//otherwise dragging has wierd interaction
+    highlightMarker(elmnt, id);//otherwise dragging has wierd interaction
 
     e = e || window.event;
     //e.preventDefault();
@@ -113,7 +114,7 @@ function dragMarker(elmnt, id) {
 
   function closeDragElement() {
     iconBeignDragged = false;
-
+    selectio.break();
     // stop moving when mouse button is released:
     reapplyPerc(elmnt);
     updateMarkerPos();

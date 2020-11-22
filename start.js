@@ -75,19 +75,24 @@ var selectio = new DragSelect({
     },
     onElementSelect: function(element) {
         if(mouseMode=='edit'){
-        if($(".editingMarker").length==0){
-            highlightMarker(element, $(element).attr('id'));
+            if($(".editingMarker").length==0){
+                highlightMarker(element, $(element).attr('id'));
+            }
+            else{
+                $(element).addClass('editingMarker');
+                /* checks if applied it to same element twice, happens when dragging */
+                if($(".editingMarker").length==1){return;}
+                setToolsVisibility(false);
+            }
         }
-        else{
-            setToolsVisibility(false);
-            $(element).addClass('editingMarker');
-        }
-    }
     },
     onElementUnselect: function(element) {
         if(mouseMode=='edit'){
         $(element).removeClass('editingMarker');}
-    }
+    }/*,
+    callback: function(){
+        could call here thing when released
+    }*/
 });
 
 function changeBackgroundImage(url){
@@ -293,6 +298,8 @@ function loadProject(projectName){
 
     //reset image position
     $('#mapscreen').css({'top':'0px', 'left':'0px'})
+
+    updateBgOffsets();
 
     //load icons on image
     loadIcons();
@@ -652,6 +659,7 @@ function updateMapSize(direction, e){
     
     //move map so centered on mouse
     zoomOffsetCompensation(oldZoom, newZoom, e);
+    updateBgOffsets();
 }
 
 //finally works, moves image to adjust for changing size so is still around mouse
@@ -724,6 +732,12 @@ function getDimensions(selector){
     return dimensions;
 }
 
+function updateBgOffsets(){
+    imgOffsets = getOffsets('#mapscreen');
+    $('#bgmaterial').css({'left': -imgOffsets.x,
+    'top': -imgOffsets.y});
+}
+
 /* returns left and top css values in object, access via .x and .y */
 function getOffsets(selector){
     var offsets = {
@@ -760,11 +774,16 @@ function saveFile(){
     if(typeof projJson !== 'undefined'){
         console.log("sending save request");
         ipcRenderer.send('project:savefile', projJson);
+        $('#saveel').addClass('savenow'); //XXX working on this
     }
     else{
         console.log("no file to save");
     }
 }
+
+$('#saveel').on('animationend', function(){
+    $('#saveel').removeClass('savenow');
+});
 
 
 //projInfo has [name, json]
