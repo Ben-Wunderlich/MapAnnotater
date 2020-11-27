@@ -1,10 +1,31 @@
 {
   "name": "mapannotater",
   "version": "1.0.0",
-  "description": "map annotater desktop app",
+  "description": "map annotation desktop app",
   "main": "index.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build-installer": "electron-builder"
+  },
+  "build": {
+    "appId": "mapannotater",
+    "directories": {
+      "app": "./.."
+    },
+    "extraFiles": [
+      "drag.js", "map_markers/*", "projects", "start.js"
+    ],
+    "win": {
+      "target": ["nsis"],
+      "icon": "myicon.ico"
+    },
+    "nsis": {
+      "installerIcon": "myicon.ico",
+      "uninstallerIcon": "myicon.ico",
+      "uninstallDisplayName": "mapannotater",
+      "oneClick":false,
+      "allowToChangeInstallationDirectory": true
+    }
   },
   "repository": {
     "type": "git",
@@ -18,11 +39,12 @@
   "homepage": "https://github.com/Ben-Wunderlich/MapAnnotater#readme",
   "dependencies": {
     "dragselect": "^1.14.0",
-    "electron": "^9.2.0",
     "image-size": "^0.8.3",
     "jquery": "^3.5.1"
   },
   "devDependencies": {
+    "electron": "^9.2.0",
+    "electron-builder": "^22.9.1",
     "electron-rebuild": "^2.3.2"
   }
 }

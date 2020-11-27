@@ -21,7 +21,7 @@ var currentMarkerIcon;
 
 const defaultImgSize = 24;
 const minImgSize = 8;
-const maxImgSize = 506;
+const maxImgSize = 500;
 $("#iconResizeInput").attr('min', minImgSize).attr('max', maxImgSize);
 
 const zoomLevels = [
@@ -69,7 +69,7 @@ var mouseMode;
 var selectio = new DragSelect({
     area: document.getElementById('bgmaterial'),
     onDragStart: function(e) {
-        if(mouseMode!='edit' || e.which==2 || iconBeignDragged){
+        if(mouseMode!='edit' || e.which==2 || iconBeignDragged || projJson == undefined){
             selectio.break();
         }
     },
@@ -286,6 +286,7 @@ function loadProject(projectName){
     setToolsVisibility(false);
     operationStack=[];
     redoStack = [];
+    clearText();
     //$("#sizeAdjustor").css('visibility', 'hidden');
 
     changeZoom(0);//also updates mapzoom
@@ -477,6 +478,7 @@ function projectReset(){
     $('#welcomeMessage').css('visibility', 'visible');
     setToolsVisibility(false);
     $('#mapmarkers').empty();
+    projJson=undefined;
 
     clearText()
 
@@ -508,16 +510,14 @@ function addJsonMarker(position, markerID, markerSize){
     newChanges();
 }
 
-//direction true is up, else is down, must have a highlighted marker
+/* changes the current marker size, adjusting highlighted marker if present. direction true is increase, false is decrease, null is dont change */
 function updateMarkerIconSize(direction=null){
     //do on button push, also on save and on scroll wheel, change by 10%
     //when press button, change number itself then call this
     
-    //var originalNum = $('#iconResizeInput').val();
     var originalNum = getIconSize();
-    //console.log("origion is "+originalNum);
 
-    if(isNaN(originalNum)){//if isnt a number
+    if(isNaN(originalNum)){
         console.log('not a num');
         setMarkerSize(defaultImgSize*mapZoom);
         return;
@@ -549,17 +549,17 @@ function updateMarkerIconSize(direction=null){
     ipcRenderer.send('work-unsaved');
 }
 
-/* takes size relative to current*/
+/* takes size relative to current, resizes all highlighted elements to imgSize*/
 function setMarkerSize(imgSize){
 
-    var asbSize = imgSize/mapZoom
+    var asbSize = Math.round(imgSize/mapZoom)
     if(asbSize < minImgSize || asbSize > maxImgSize){
         return;
     }
 
     //change value in table
     //$('#iconResizeInput').val(imgSize);
-    setIconSize(imgSize, false);
+    setIconSize(asbSize, true);
 
     var markersEditing = $('.editingMarker');
     if(markersEditing.length == 0){//if no element to change
@@ -594,7 +594,6 @@ function setMarkerSize(imgSize){
     });
 
     //redefine it in terms of original size
-    //var papaDimensions = getDimensions("#mapscreen");
     var relImgSize = Math.round(imgSize / mapZoom);
 
     //update values on json
@@ -621,12 +620,15 @@ function setMarkerSize(imgSize){
     }
 }
 
+/* updates the zoom variable according to corresponding value of NewIndex */
 function changeZoom(newIndex){
     zoomIndex = newIndex;
     mapZoom = zoomLevels[newIndex];
     return mapZoom;
 }
 
+/* changes the physical size of the map along with all the markers. if direction is false it is zooming out and making map smaller. If direction is false it is zooming in and making it bigger.
+e is the event. used to calculate where to zoom around */
 function updateMapSize(direction, e){
     var newZoom;
     var oldZoom = mapZoom;
@@ -662,7 +664,7 @@ function updateMapSize(direction, e){
     updateBgOffsets();
 }
 
-//finally works, moves image to adjust for changing size so is still around mouse
+/* moves image to adjust for changing size so it is still centered around the mouse */
 function zoomOffsetCompensation(oldZoom, newZoom, e){
     var screenElement = $('#mapscreen');
     
@@ -695,12 +697,7 @@ function zoomOffsetCompensation(oldZoom, newZoom, e){
     });
 }
 
-function windowReset(){
-    setMouseMode("view");
-    clearText();
-    //this will need more stuff as it goes
-}
-
+/* sets the mouseMode variable to newMode. can be 'view' 'edit' or 'add'. Also changes highlighted icon on thr right bar */
 function setMouseMode(newMode){
     mouseMode=newMode;
     $("#togglebuttons").children().removeClass("currentmousemode");
@@ -732,6 +729,7 @@ function getDimensions(selector){
     return dimensions;
 }
 
+/* keeps background centered with moved and zooms */
 function updateBgOffsets(){
     imgOffsets = getOffsets('#mapscreen');
     $('#bgmaterial').css({'left': -imgOffsets.x,
@@ -769,18 +767,20 @@ function setIconSize(newSize, alreadyTrue=false){
     $('#iconResizeInput').val(newSize);
 }
 
+/* saved unsaved changes and uses ipc to send json to main background thread of program */
 function saveFile(){
     saveMarkerText();
     if(typeof projJson !== 'undefined'){
         console.log("sending save request");
         ipcRenderer.send('project:savefile', projJson);
-        $('#saveel').addClass('savenow'); //XXX working on this
+        $('#saveel').addClass('savenow');
     }
     else{
         console.log("no file to save");
     }
 }
 
+/* resets element so can display save animation repeatedly */
 $('#saveel').on('animationend', function(){
     $('#saveel').removeClass('savenow');
 });
@@ -790,7 +790,6 @@ $('#saveel').on('animationend', function(){
 ipcRenderer.on('project:open', function(e,projInfo){
     projJson = projInfo[1];
     loadProject(projInfo[0]);
-    windowReset();
 });
 
 //responds to save request from client
@@ -840,6 +839,13 @@ document.body.onkeyup = function(e) {
 };
 
 $('#iconResize').on('click', function(){
+    currSize = getIconSize(true);
+    if(currSize > maxImgSize){
+        setIconSize(maxImgSize, true);
+    }
+    else if(currSize < minImgSize){
+        setIconSize(minImgSize, true);
+    }
     updateMarkerIconSize();
 });
 

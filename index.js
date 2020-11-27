@@ -1,12 +1,7 @@
-
-//USE 'npm start' to start it
-
 /*
-made using electron https://www.electronjs.org
 
-drag functionality from https://thibaultjanbeyer.github.io/DragSelect/
+Starting point for the application
 
-jquery from https://jquery.com
 */
 
 
@@ -15,6 +10,7 @@ const electron = require('electron');
 const url = require('url');
 const path = require('path');
 const fs = require('fs');
+const nativeImage = electron.nativeImage;
 //const { type } = require('jquery');
 const { dialog } = require('electron');
 
@@ -22,6 +18,7 @@ const {app, BrowserWindow, Menu, ipcMain} = electron;
 
 //set environment
 //process.env.NODE_ENV = 'production';
+process.env.NODE_ENV = 'dev';
 
 let startWindow;
 let currentProjectTitle = -1;
@@ -48,7 +45,7 @@ app.on('ready', function(){
         height: 800,
         minWidth: 1000,
         minHeight: 600,
-        icon: "myicon.ico"
+        icon: nativeImage.createFromPath('myicon.ico')
     });
 
     //load html file into window
@@ -123,17 +120,26 @@ function makeid(length) {
     return result;
  }
 
+/* dir is a str */
+function mkdirp(dir) {
+    if (fs.existsSync(dir)) { return true }
+    const dirname = path.dirname(dir)
+    mkdirp(dirname);
+    fs.mkdirSync(dir);
+}
+
 //file formats here
 //items in form [project_name, image_buffer]
-function CreateProjectFiles(items){
+function CreateProjectFiles(items){//XXX
     const folderpath = path.join(__dirname,'projects',items[0]);
     const textPath = path.join(folderpath, items[0].concat('.json'));
     const imagePath = path.join(folderpath, 'image.jpg');
 
     //making directory
-    fs.mkdirSync(folderpath, { recursive: true }, (err) => {
+    /*fs.mkdirSync(folderpath, { recursive: true }, (err) => {
         if (err) throw err;
-    });
+    });*/ //XXX this was giving errors
+    mkdirp(folderpath);
 
     //making json file
     var jsonObj = {
@@ -174,21 +180,6 @@ function getJson(projectName){
 
 /* called after saving to see if anything was waiting for a save */
 function afterSaveCheck(){
-    /*switch(toDoAfterSaving){
-        case NOTHING:
-            break;
-        case NEW:
-            NewProjectMenu();
-            break;
-        case OPEN:
-            chooseProject();
-            break;
-        case QUIT:
-            app.quit();
-        default:
-            console.log("ERROR ON SOME ISLE OR OTHER "+toDoAfterSaving);
-
-    }*/
 
     if(toDoAfterSaving == NOTHING){
         //do nothing
@@ -414,9 +405,9 @@ const mainMenuTemplate = [
         {
             label:'delete current project',
             click(){
-                if(typeof currentProjectTitle === 'undefined'){
+                if(currentProjectTitle==-1){
                     return;
-                }   
+                }
                 if(deleteVerify()){
                     console.log("deleteing current project")
 

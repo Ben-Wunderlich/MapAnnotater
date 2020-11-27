@@ -1,15 +1,15 @@
-// Make the DIV element draggable:
-//dragElement(document.getElementById("mydiv"));
-
-//only drags mainimage
+// Make the element draggable:
 
 var iconBeignDragged = false;
 
+//only drags main image, #mapscreen
 function dragElement(elmnt) {
   var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0; mouseButt=null;
   elmnt.onmousedown = dragMouseDown;
 
   const moveEl = $("#mapscreen")[0];
+
+  return dragMouseDown;
 
   function dragMouseDown(e) {
     usingMiddle = e.which == 2;
@@ -71,24 +71,28 @@ function dragElement(elmnt) {
   }
 }
 
-dragElement($('#bgmaterial')[0]);
-//XXXdragElement($('#mapimg')[0]);
+dragBackground = dragElement($('#bgmaterial')[0]);
 
+/* allows markers to be dragged around on click, is called as markers are created */
 function dragMarker(elmnt, id) {
   var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
   elmnt.onmousedown = dragMouseDown;
 
   function dragMouseDown(e) {
-    e.preventDefault();
-    /*if (mouseMode == 'view'){
+
+    if (e.which==2){
+      e.preventDefault();
+      dragBackground(e);//holy shit I can't believe this actually worked
       return;
-    }XXX maybe bad idea to remove this*/
+    }
+
+    e.preventDefault();
+
     iconBeignDragged = true;
     selectio.break();
     highlightMarker(elmnt, id);//otherwise dragging has wierd interaction
 
     e = e || window.event;
-    //e.preventDefault();
     // get the mouse cursor position at startup:
     pos3 = e.clientX;
     pos4 = e.clientY;

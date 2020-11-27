@@ -44,10 +44,8 @@ button:focus{
 }
 
 #mapscreen{
-    /*width: 90%;
-    height: 100%;*/
     float: left;
-    position: absolute;/*XXX as either -10 or 3 it doesnt work in diff ways
+    position: absolute;/*as either -10 or 3 it doesnt work in diff ways
     actually it is about which of #mapscreen or #bgmaterial is more front */
     /*background-image: url('projects/drggg/image.jpg');*/
 }
@@ -62,7 +60,7 @@ button:focus{
     resize: none;
     position: fixed;
     top:10px;
-    height: calc(100vh - 300px);/*XXX this solution is bad but works well*/
+    height: calc(100vh - 300px);/*this solution is bad but works well*/
     resize: none;
 }
 
