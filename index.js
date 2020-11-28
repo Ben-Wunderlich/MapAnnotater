@@ -4,14 +4,11 @@ Starting point for the application
 
 */
 
-
-
 const electron = require('electron');
 const url = require('url');
 const path = require('path');
 const fs = require('fs');
 const nativeImage = electron.nativeImage;
-//const { type } = require('jquery');
 const { dialog } = require('electron');
 
 const {app, BrowserWindow, Menu, ipcMain} = electron;
@@ -109,7 +106,11 @@ function NewProjectMenu(){
     });
 }
 
-
+/**
+ * makes a string of random numbers
+ * @param {int} length length of string you want to make
+ * @returns {string} the random string
+ */
 function makeid(length) {
     var result = '';
     var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -120,7 +121,11 @@ function makeid(length) {
     return result;
  }
 
-/* dir is a str */
+/**
+ * recsively majes a directory
+ * is a workaround for when is installed
+ * @param {string} dir the directory to make
+ */
 function mkdirp(dir) {
     if (fs.existsSync(dir)) { return true }
     const dirname = path.dirname(dir)
@@ -128,17 +133,16 @@ function mkdirp(dir) {
     fs.mkdirSync(dir);
 }
 
-//file formats here
-//items in form [project_name, image_buffer]
-function CreateProjectFiles(items){//XXX
+/**
+ * creates all files for a new project
+ * @param {[string, Buffer]} items has form [project_name, image_buffer]
+ */
+function CreateProjectFiles(items){
     const folderpath = path.join(__dirname,'projects',items[0]);
     const textPath = path.join(folderpath, items[0].concat('.json'));
     const imagePath = path.join(folderpath, 'image.jpg');
 
     //making directory
-    /*fs.mkdirSync(folderpath, { recursive: true }, (err) => {
-        if (err) throw err;
-    });*/ //XXX this was giving errors
     mkdirp(folderpath);
 
     //making json file
@@ -159,14 +163,12 @@ function CreateProjectFiles(items){//XXX
         startWindow.webContents.send('project:open', [items[0], jsonObj]);
     });
 
-
-    //old code, might be useful for copying other files
-    /*fs.copyFile(items[1], imagePath, (err) => {
-        if (err) throw err;
-        console.log('source was copied to destination.txt');
-    });*/
 }
 
+/**
+ * returns a promise to get a projects json
+ * @param {string} projectName the project to get the json for
+ */
 function getJson(projectName){
     return new Promise(resolve =>{
 
@@ -178,7 +180,8 @@ function getJson(projectName){
     });
 }
 
-/* called after saving to see if anything was waiting for a save */
+/** 
+ * called after saving to see if anything was waiting for a save */
 function afterSaveCheck(){
 
     if(toDoAfterSaving == NOTHING){
@@ -208,6 +211,9 @@ function projectFolderisValid(projPath, title){
     return false;
 }
 
+/** 
+ * opens dialog to choose which project to open, then opens that project
+*/
 function chooseProject(){
     let projectsUrl = path.join(__dirname, 'projects');
     
@@ -233,6 +239,18 @@ function chooseProject(){
     });*/
 }
 
+
+/* opens dialog to make sure you want to leave without saving changes.
+Returns:
+0 if save and quit
+1 if don't save and quit
+2 cancel
+*/
+
+/**
+ * opens dialog to make sure user wants to leave without saving changes.
+ * @returns {int} 0: save and quit, 1: quit without saving, 2: cancel
+ */
 function unsavedWorkCheck(){
     if(unsavedWork){
         var choice = dialog.showMessageBoxSync(
@@ -252,6 +270,10 @@ function unsavedWorkCheck(){
     }
 }
 
+/**
+ * opens dialog to make sure you want to delete a project.
+ * @returns true if want to cancel, false if delete project
+ */
 function deleteVerify(){
     var choice = dialog.showMessageBoxSync(
         {
@@ -268,6 +290,9 @@ function deleteVerify(){
     }
 }
 
+/** 
+ * deletes all files of the current project
+ * */ 
 function deleteProjectFiles(){
     var folderPath = path.join(__dirname, 'projects', currentProjectTitle); 
 
@@ -283,6 +308,10 @@ function deleteProjectFiles(){
     //at end
 }
 
+/**
+ * changes whether the redo button is activated or not
+ * @param {bool} isEnabled whether to be active
+ */
 function setRedo(isEnabled){
     var menuItem = Menu.getApplicationMenu().getMenuItemById('redoMenuItem');
     menuItem.enabled = isEnabled;
@@ -318,7 +347,6 @@ ipcMain.on('change:redo', function(e, isEnabled){
     setRedo(isEnabled);
 });
 
-//catch project:add
 //items in form [project_name, image_buffer]
 ipcMain.on('project:add', function(e, items){
     console.log(items[1].byteLength);

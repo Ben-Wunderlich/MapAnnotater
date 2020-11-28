@@ -8,7 +8,7 @@ A tool for combining maps with the information about them.
 
 or
 
-```npm run build-installer``` to build the installer
+~~```npm run build-installer``` to build the installer~~
 
 ## made with
 

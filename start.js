@@ -95,6 +95,10 @@ var selectio = new DragSelect({
     }*/
 });
 
+/**
+ * changes the background image and resets size of background
+ * @param {string} url the new images url
+ */
 function changeBackgroundImage(url){
     var dimensions = sizeOf(url);
     trueImageHeight = dimensions.height;
@@ -107,12 +111,19 @@ function changeBackgroundImage(url){
     });
 }
 
+/**
+ * updates stack for purpose of undoing
+ * @param {boolean} clearStack whether to clear the stack
+ */
 function newChanges(clearStack=true){
     updateOperationStack(clearStack);
     ipcRenderer.send('work-unsaved');
 }
 
-
+/**
+ * resets the project to before the last thing that was changed
+ * if no last step will do nothing
+ */
 function undoStep(){
     if(operationStack.length <= 1){
         console.log('no operation to undo');
@@ -125,6 +136,9 @@ function undoStep(){
     remakeMarkers(lastJson);
 }
 
+/**
+ * redoes the last undone step
+ */
 function redoStep(){
     if(redoStack.length === 0){
         console.log('no step to redo');
@@ -137,7 +151,10 @@ function redoStep(){
     remakeMarkers(redoSnapshot);
 }
 
-//change json to previous version and update page
+/**
+ * changes json to previous version and updates page
+ * @param {object} previousSnapshot the snapshot to be updated to
+ */
 function remakeMarkers(previousSnapshot){
     deselectMarker();
     projJson = previousSnapshot;
@@ -153,8 +170,12 @@ function remakeMarkers(previousSnapshot){
     newChanges(false);
 }
 
+/**
+ * creates new snapshot and adds to top of undo stack
+ * @param {boolean} clearRedo if true clears the stack
+ */
 function updateOperationStack(clearRedo=true){
-    console.log('saving');
+    console.log('updating json');
     if(clearRedo){
         redoStack=[];//if would try to redo after changes, changes would be lost
     }
@@ -166,6 +187,11 @@ function updateOperationStack(clearRedo=true){
     operationStack.push(deepCopy);
 }
 
+/**
+ * makes a string of random numbers
+ * @param {int} length length of string you want to make
+ * @returns {string} the random string
+ */
 function makeid(length) {
     var result = '';
     var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -176,14 +202,20 @@ function makeid(length) {
     return result;
  }
 
-/* returns array of ids belonging to all highlighted markers */
+/**
+ * @returns array of ids belonging to all highlighted markers
+ */
 function getEditedIds(){
      var selectedIds = []
     $(".editingMarker").each(function() { selectedIds.push($(this).attr('id'))});
     return selectedIds
 }
 
- function changeMarkerIcon(newIcon){
+/**
+ * changes all current highlighted elements to have a new icon
+ * @param {string} newIcon the url of the new icon
+ */
+function changeMarkerIcon(newIcon){
     if($('.editingMarker').length === 0){
         return; 
     }
@@ -200,6 +232,9 @@ function getEditedIds(){
     newChanges();
  }
 
+/**
+ * creates buttons for all the possible icons a marker can have
+ */
 function makeMarkerOptions(){
     var highLighted = false;//so just one gets highlighted
     fs.readdirSync('map_markers\\').forEach(file => {
@@ -227,7 +262,10 @@ function makeMarkerOptions(){
     });
 }
 
-//used from drag file
+/**
+ * called from drag.
+ * updates the highlighted makers position in the json
+ */
 function updateMarkerPos(){
     if($('.editingMarker').length !== 1){
         throw "Marker position updated without propper number of sleected markers"
@@ -252,6 +290,10 @@ function updateMarkerPos(){
 }
 
 //only used from drag file
+/**
+ * changes position of an element from absolute to relative to size of container so it scales with it
+ * @param {HTMLElement} el element to be modified
+ */
 function reapplyPerc(el){
     var offsets = getOffsets(el);
     var papaDimensions = getDimensions("#mapscreen");
@@ -265,6 +307,9 @@ function reapplyPerc(el){
     });
 }
 
+/**
+ * creates map markers based on the current json
+ */
 function loadIcons(){
     //clear previous markers
     $('#mapmarkers').empty();
@@ -278,6 +323,10 @@ function loadIcons(){
     });
 }
 
+/**
+ * opens a new project and resets the screen
+ * @param {string} projectName project to be loaded
+ */
 function loadProject(projectName){
     console.log("now opening ".concat(projectName));
     ipcRenderer.send('setTitle', projectName);
@@ -307,6 +356,11 @@ function loadProject(projectName){
     updateOperationStack();
 }
 
+/**
+ * adds a new marker to the page and the json
+ * @param {int} currX x position defined relative to current map size
+ * @param {int} currY y position defined relative to current map size
+ */
 function addNewMarker(currX, currY){
 
     ipcRenderer.send('change:redo', true);
@@ -344,6 +398,13 @@ function addNewMarker(currX, currY){
 
 /*relOgig in form {x: num, y: num} id is a str, re;ative to curr size
  icon is str of img it shows as, iconsize is num, how big icon is */
+/**
+ * all are defined as relative to roiginal size
+ * @param {object} relOrig is in form {x:int, y:int} the position of the marker
+ * @param {string} id the id of the marker to add
+ * @param {string} icon the url of the icon the marker uses
+ * @param {int} iconSize the size in pixels of the icon
+ */
 function addExistingMarker(relOrig, id, icon, iconSize){
     var markerElement = document.createElement("IMG");
 
@@ -383,6 +444,12 @@ function addExistingMarker(relOrig, id, icon, iconSize){
     return markerElement;
 }
 
+/**
+ * highlights a given element.
+ * **NOTE** also deselects any other elements
+ * @param {HTMLElement} elmnt element to be highlighted
+ * @param {string} elmntID the id of that element
+ */
 function highlightMarker(elmnt, elmntID){
     var icon = $(elmnt).attr('src');
     saveMarkerText();
@@ -398,7 +465,9 @@ function highlightMarker(elmnt, elmntID){
 
 }
 
-//called from drag.js
+/**
+ * deselects all markers
+ */
 function deselectMarker(){
     $('.editingMarker').removeClass('editingMarker');
     clearText();
@@ -407,7 +476,10 @@ function deselectMarker(){
     setToolsVisibility(false);
 }
 
-function setMarkerText(elmnt){
+/**
+ * changes the marker text area to visibile and puts text of the current highlighted marker in it
+ */
+function setMarkerText(){
     setToolsVisibility(true);
 
     var marker = projJson.markers[markerID];
@@ -420,6 +492,9 @@ function setMarkerText(elmnt){
     return;
 }
 
+/**
+ * updates json with the current values in the marker text area
+ */
 function saveMarkerText(){
     if($('.editingMarker').length === 0 || highlightedMarker == undefined){
         return;
@@ -433,7 +508,6 @@ function saveMarkerText(){
     if(marker.note === textToBeSaved &&
     marker.title === titleToBeSaved && 
     iconSizeToSave == marker.iconSize){
-        console.log("no change "+iconSizeToSave + " "+marker.iconSize);
         return;
     }
 
@@ -445,11 +519,17 @@ function saveMarkerText(){
     return;
 }
 
+/**
+ * clears the text area
+ */
 function clearText(){
     $('#mainText').val("");
     $('#titleText').val("");
 }
 
+/**
+ * deletes all highlighted markers from the page and the json
+ */
 function deleteMarker(){
     if($('.editingMarker').length === 0){
         return;
@@ -471,7 +551,9 @@ function deleteMarker(){
     $(".editingMarker").remove();
 }
 
-//resets the window to be blank
+/**
+ * resets the window to be blank
+ */
 function projectReset(){
     ipcRenderer.send('setTitle', 'Map Annotater');
     $('#rightbar').css('visibility', 'hidden');
@@ -491,7 +573,13 @@ function projectReset(){
     $('#mapmarkers').empty();
 }
 
-/* takes in position and markersize relative to true size */
+/**
+ * adds a new marker to the json
+ * **NOTE** position and size defined relative to original size
+ * @param {object} position has form {x:int, y:int}
+ * @param {string} markerID id of the new marker
+ * @param {int} markerSize size of the new marker
+ */
 function addJsonMarker(position, markerID, markerSize){
 
     //var papaDimensions = getDimensions("#mapscreen");
@@ -510,7 +598,10 @@ function addJsonMarker(position, markerID, markerSize){
     newChanges();
 }
 
-/* changes the current marker size, adjusting highlighted marker if present. direction true is increase, false is decrease, null is dont change */
+/**
+ * changes the current marker size, adjusting highlighted marker if present
+ * @param {boolean} direction if true increase size, if false decrease, if null don't change
+ */
 function updateMarkerIconSize(direction=null){
     //do on button push, also on save and on scroll wheel, change by 10%
     //when press button, change number itself then call this
@@ -549,7 +640,11 @@ function updateMarkerIconSize(direction=null){
     ipcRenderer.send('work-unsaved');
 }
 
-/* takes size relative to current, resizes all highlighted elements to imgSize*/
+/**
+ * resizes all highlighted elements to imgSize
+ * **NOTE** takes size relative to current
+ * @param {int} imgSize new size to be set to
+ */
 function setMarkerSize(imgSize){
 
     var asbSize = Math.round(imgSize/mapZoom)
@@ -581,9 +676,7 @@ function setMarkerSize(imgSize){
         var currentLeft = parseFloat(currMarker.css('left'));
         var currId = currMarker.attr('id');
 
-        console.log("dif between "+imgSize + " "+currentSize);  
         var shiftAmount = (imgSize - currentSize)/2;
-        console.log("shift by "+shiftAmount);
         //update position so moves symetrically
         currMarker.css({
             'left': percify((currentLeft-shiftAmount)/canvasSize.x*100),
@@ -620,15 +713,21 @@ function setMarkerSize(imgSize){
     }
 }
 
-/* updates the zoom variable according to corresponding value of NewIndex */
+/**
+ * updates the zoom variable according to the zoomLevels
+ * @param {int} newIndex the index of the new zoom level to be set to 
+ */
 function changeZoom(newIndex){
     zoomIndex = newIndex;
     mapZoom = zoomLevels[newIndex];
     return mapZoom;
 }
 
-/* changes the physical size of the map along with all the markers. if direction is false it is zooming out and making map smaller. If direction is false it is zooming in and making it bigger.
-e is the event. used to calculate where to zoom around */
+/**
+ * changes the physical size of the map along with all the markers
+ * @param {boolean} direction if true zooming out(smaller), if false zooming in(bigger)
+ * @param {event} e scroll event 
+ */
 function updateMapSize(direction, e){
     var newZoom;
     var oldZoom = mapZoom;
@@ -664,7 +763,13 @@ function updateMapSize(direction, e){
     updateBgOffsets();
 }
 
-/* moves image to adjust for changing size so it is still centered around the mouse */
+/**
+ * moves image to adjust for changing size so it is still centered around the mouse
+ * **NOTE** zoom is between 0 and 1
+ * @param {number} oldZoom previous amount of zoom
+ * @param {number} newZoom new amount of zoom
+ * @param {event} e the mouse wheel zoom event
+ */
 function zoomOffsetCompensation(oldZoom, newZoom, e){
     var screenElement = $('#mapscreen');
     
@@ -697,19 +802,29 @@ function zoomOffsetCompensation(oldZoom, newZoom, e){
     });
 }
 
-/* sets the mouseMode variable to newMode. can be 'view' 'edit' or 'add'. Also changes highlighted icon on thr right bar */
+/**
+ * sets the mouseMode variable to newMode. Also changes highlighted icon on thr right bar
+ * **NOTE** mousemode can only be 'view' 'edit' or 'add'
+ * @param {string} newMode the new mode
+ */
 function setMouseMode(newMode){
     mouseMode=newMode;
     $("#togglebuttons").children().removeClass("currentmousemode");
     $("."+newMode).addClass("currentmousemode");
 }
 
-/* very simple, just here in case I need to change them all at once */
+/**
+ * just adds % to end of a number
+ * @param {int} num 
+ */
 function percify(num){
     return num+"%"
 }
 
-/* sets markertools to be visible or hiidden, takes bool nowVisible */
+/**
+ * sets marker text fields to be visible or invisible
+ * @param {boolean} nowVisible whether to turn visible or not
+ */
 function setToolsVisibility(nowVisible){
     if(nowVisible){
         $("#markertools").css('visibility', 'visible');
@@ -720,7 +835,11 @@ function setToolsVisibility(nowVisible){
     }
 }
 
-/* returns width and height css values in object, access via .x and .y */
+/**
+ * gets width and height of an elemnt
+ * @param {string} selector jquery selector for element to get dimensions of
+ * @returns object of form {x: int, y: int}
+ */
 function getDimensions(selector){
     var dimensions = {
         x: parseInt($(selector).css('width')),
@@ -729,14 +848,20 @@ function getDimensions(selector){
     return dimensions;
 }
 
-/* keeps background centered with moved and zooms */
+/**
+ * resets background to take up whole background
+ */
 function updateBgOffsets(){
     imgOffsets = getOffsets('#mapscreen');
     $('#bgmaterial').css({'left': -imgOffsets.x,
     'top': -imgOffsets.y});
 }
 
-/* returns left and top css values in object, access via .x and .y */
+/**
+ * finds offset of an element
+ * @param {string} selector jquery selector for the elment
+ * @returns object of form {x: int, y: int}
+ */
 function getOffsets(selector){
     var offsets = {
         x: parseInt($(selector).css('left')),
@@ -745,8 +870,10 @@ function getOffsets(selector){
     return offsets;
 }
 
-/* gets value of #iconResizeInput and converts to relative pixel size 
-if specify getTrue it will give you relative to original image*/
+/**
+ * gets value of #iconResizeInput and converts to relative to current size
+ * @param {boolean} getTrue if true will get you relative to original size
+ */
 function getIconSize(getTrue=false){
     var imgSize = $('#iconResizeInput').val();
     if(isNaN(imgSize)){
@@ -758,7 +885,12 @@ function getIconSize(getTrue=false){
     return imgSize;
 }
 
-/* takes value of icon size in pixels, already true if is relative to original picture */
+/**
+ * sets icon size input field on right bar
+ * **NOTE** should always set it relative to original
+ * @param {int} newSize new size
+ * @param {boolean} alreadyTrue whether is already defined to original image
+ */
 function setIconSize(newSize, alreadyTrue=false){
     if(!alreadyTrue){
         newSize = Math.round(newSize / mapZoom);
@@ -767,7 +899,9 @@ function setIconSize(newSize, alreadyTrue=false){
     $('#iconResizeInput').val(newSize);
 }
 
-/* saved unsaved changes and uses ipc to send json to main background thread of program */
+/**
+ * saved unsaved changes and uses ipc to send json to main background thread of program 
+ */
 function saveFile(){
     saveMarkerText();
     if(typeof projJson !== 'undefined'){
