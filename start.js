@@ -354,6 +354,8 @@ function loadProject(projectName){
     //load icons on image
     loadIcons();
     updateOperationStack();
+
+    ctrlDown=false;//ctrl from ctrl+o was being registered as down but not up so making it so that when pressed z it undit, even in text box
 }
 
 /**
@@ -459,6 +461,7 @@ function highlightMarker(elmnt, elmntID){
     highlightedMarker = elmnt;
     markerID = elmntID;
     setMarkerText(elmnt);
+    $("#titleText").focus();
     setToolsVisibility(true);
 
     $("img[src$='"+icon+"']").filter(".baseIcon").trigger('click');//XXX here it is!!!
@@ -956,10 +959,11 @@ document.body.onkeydown = function(e) {
     ctrlDown = true;
   }
   else if (ctrlDown && e.keyCode == zKey){
+    console.log("undo now good boy "+ctrlDown);
     e.preventDefault();
     saveMarkerText();
     undoStep();
-    return false;
+    //return false;
   }
   else if(ctrlDown && e.keyCode == yKey){
       e.preventDefault();

@@ -34,6 +34,7 @@ app.on('ready', function(){
     //create new wundow
     startWindow = new BrowserWindow({
         webPreferences:{
+            worldSafeExecuteJavaScript: true,
             nodeIntegration: true,
             enableRemoteModule: true,
             webSecurity: false
@@ -82,6 +83,7 @@ app.on('ready', function(){
 function NewProjectMenu(){
     newProjectWindow = new BrowserWindow({
         webPreferences: {
+            worldSafeExecuteJavaScript: true,
             nodeIntegration: true,
             safeDialogs: true,
             enableRemoteModule: true
