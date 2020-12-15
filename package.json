@@ -10,10 +10,10 @@
   "build": {
     "appId": "mapannotater",
     "directories": {
-      "app": "./.."
+
     },
     "extraFiles": [
-      "drag.js", "map_markers/*", "projects", "start.js"
+      "drag.js", "map_markers/*", "start.js"
     ],
     "win": {
       "target": ["nsis"],
@@ -44,7 +44,6 @@
   },
   "devDependencies": {
     "electron": "^9.2.0",
-    "electron-builder": "^22.9.1",
-    "electron-rebuild": "^2.3.2"
+    "electron-builder": "^22.9.1"
   }
 }

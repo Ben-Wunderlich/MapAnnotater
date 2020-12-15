@@ -9,9 +9,9 @@ const url = require('url');
 const path = require('path');
 const fs = require('fs');
 const nativeImage = electron.nativeImage;
-const { dialog } = require('electron');
+//const { dialog } = require('electron');
 
-const {app, BrowserWindow, Menu, ipcMain} = electron;
+const {app, BrowserWindow, Menu, ipcMain, dialog} = electron;
 
 //set environment
 //process.env.NODE_ENV = 'production';
@@ -28,6 +28,7 @@ const OPEN = 1;
 const QUIT = 2
 var toDoAfterSaving = NOTHING;
 
+console.log(app.getPath("documents"));//"home"
 
 // listen for app to be ready
 app.on('ready', function(){
@@ -48,7 +49,7 @@ app.on('ready', function(){
 
     //load html file into window
     startWindow.loadURL(url.format({
-        pathname: path.join(__dirname, 'start.html'),
+        pathname: path.join(app.getAppPath(), 'start.html'),
         protocol:'file:',
         slashes: true
     }));
@@ -97,7 +98,7 @@ function NewProjectMenu(){
 
     //load html file into window
     newProjectWindow.loadURL(url.format({
-        pathname: path.join(__dirname, 'newProjectWindow.html'),
+        pathname: path.join(app.getAppPath(), 'newProjectWindow.html'),
         protocol:'file:',
         slashes: true
     }));
