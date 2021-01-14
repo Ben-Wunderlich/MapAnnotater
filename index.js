@@ -8,6 +8,7 @@ const electron = require('electron');
 const url = require('url');
 const path = require('path');
 const fs = require('fs');
+//const { start } = require('repl');
 const nativeImage = electron.nativeImage;
 //const { dialog } = require('electron');
 
@@ -48,11 +49,22 @@ app.on('ready', function(){
     });
 
     //load html file into window
+    //var startPath = __dirname;
+    
+    //if(startPath.includes("app.asar")){
+      //  startPath
+    //}
+
     startWindow.loadURL(url.format({
-        pathname: path.join(app.getAppPath(), 'start.html'),
+        pathname: path.join(app.getAppPath(), 'start.html'),//XXX maybe could load from other place if is from uninstalled, could use __dirname to check
         protocol:'file:',
         slashes: true
     }));
+
+    //build menu from template
+    const mainMenu = Menu.buildFromTemplate(mainMenuTemplate);
+    //insert menu
+    Menu.setApplicationMenu(mainMenu);
 
     //quit app when closed
     startWindow.on('close', function(e){
@@ -73,11 +85,6 @@ app.on('ready', function(){
             console.log("ERROR ON ISLE 4!");
         }
     });
-
-    //build menu from template
-    const mainMenu = Menu.buildFromTemplate(mainMenuTemplate);
-    //insert menu
-    Menu.setApplicationMenu(mainMenu);
 });
 
 //handle create add wundow

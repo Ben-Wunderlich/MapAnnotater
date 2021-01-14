@@ -9,11 +9,8 @@
   },
   "build": {
     "appId": "mapannotater",
-    "directories": {
-
-    },
     "extraFiles": [
-      "drag.js", "map_markers/*", "start.js"
+      "drag.js", "map_markers/*", "start.js", "newProjectWindow.html", "start.html"
     ],
     "win": {
       "target": ["nsis"],
