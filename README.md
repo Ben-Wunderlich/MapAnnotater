@@ -19,3 +19,6 @@ drag select functionality from https://thibaultjanbeyer.github.io/DragSelect/
 draggable elements base code from https://www.w3schools.com/howto/howto_js_draggable.asp
 
 jquery from https://jquery.com
+
+## interface demonstration
+![interface preview](https://github.com/Ben-Wunderlich/MapAnnotater/blob/master/example.png)
