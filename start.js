@@ -472,8 +472,8 @@ function highlightMarker(elmnt, elmntID){
  * deselects all markers
  */
 function deselectMarker(){
-    $('.editingMarker').removeClass('editingMarker');
     clearText();
+    $('.editingMarker').removeClass('editingMarker');
     highlightedMarker = undefined;
     markerID = undefined;
     setToolsVisibility(false);
@@ -526,6 +526,7 @@ function saveMarkerText(){
  * clears the text area
  */
 function clearText(){
+    saveMarkerText();
     $('#mainText').val("");
     $('#titleText').val("");
 }

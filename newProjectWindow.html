@@ -6,42 +6,53 @@
     <style>
         h2{
             text-align: center;
+            /* background-color: white; */
+            text-decoration: overline;
         }
         input, button, label{
-            margin: 5px;
+            margin: 10px;
         }
         label{
             font-size: larger;
             font-weight: bold;
             margin-right: 2px;
+            display: block;
         }
         button{
-            position: relative;
-            left: 146px;
-            top: 30px;
-            background-color: #3c9940; /* Green */
-            border: none;
-            color: white;
-            padding: 15px 32px;
-            text-align: center;
-            text-decoration: none;
-            font-size: 16px;
+        border-color: #525a40;
+        border-style: double;
+        border-width: 5px;
+        color: rgb(237, 248, 248);
+        font-size: 16px;
+        padding: 15px;
+        padding-left: 30px;
+        padding-right: 30px;
+        background-color: #356d51;
         }
+        #centergrid{
+            width: 100%;
+            display: grid;
+            place-items: center;
+        }
+
         html{
-            color: #000000;
-            background-color: #4774a1;
+            color: #FFC447;
+            background-color: #222831;
         }
     </style>
 </head>
 <body>
-    <h2>new project</h2>
+    <h2>New Project</h2>
     <form>
         <div>
-            <label>project title</label>
-            <input type="text" id="newProjectName" autofocus required>
+            <label>Project Title</label>
+            <input type="text" id="newProjectName" autofocus required placeholder="my new project">
+            <label>Map Image</label>
             <input type="file" id=imageFile accept=".png, .jpg, .jpeg" required>
         </div>
+        <div id="centergrid">
         <button type="submit">create</button>
+        </div>
     </form>
 
     <script>

@@ -98,7 +98,7 @@ function NewProjectMenu(){
 
         },
         width: 400,
-        height: 300,
+        height: 370,
         resizable: false,
         title: "make new project"
     });
@@ -467,6 +467,7 @@ const mainMenuTemplate = [
                 label: 'delete selected marker',
                 accelerator: 'Delete',
                 click(){
+                    console.log("del")
                     startWindow.webContents.send('delete:marker');
                 }
             },
