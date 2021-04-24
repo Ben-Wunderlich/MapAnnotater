@@ -461,7 +461,7 @@ function highlightMarker(elmnt, elmntID){
     highlightedMarker = elmnt;
     markerID = elmntID;
     setMarkerText(elmnt);
-    $("#titleText").focus();
+    //$("#titleText").focus();
     setToolsVisibility(true);
 
     $("img[src$='"+icon+"']").filter(".baseIcon").trigger('click');//XXX here it is!!!
@@ -1008,9 +1008,9 @@ $('#bgmaterial, #mapscreen').on('mousewheel', function(e){
     }
 });
 
-$('#saveText').on('click', function(){
-    saveFile();
-});
+// $('#saveText').on('click', function(){
+//     saveFile();
+// });
 
 $('#deleteMarker').on('click', function(){
     deleteMarker();
