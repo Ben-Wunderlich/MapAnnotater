@@ -6,6 +6,7 @@ const {ipcRenderer} = electron;
 var sizeOf = require('image-size');
 
 const fs = require('fs');
+const { version } = require('process');
 //const { title } = require('process');
 //const { debug, clear } = require('console');
 //const { type } = require('jquery');
@@ -17,6 +18,8 @@ var trueImageHeight
 var highlightedMarker;
 var markerID;//id of highlighted marker
 
+var lastText="null"//used to see if a change in the text
+
 var currentMarkerIcon;
 
 const defaultImgSize = 24;
@@ -25,6 +28,13 @@ const maxImgSize = 500;
 $("#iconResizeInput").attr('min', minImgSize).attr('max', maxImgSize);
 
 const zoomLevels = [
+    2.0,
+    1.771561,
+    1.61051,
+    1.4641,
+    1.331,
+    1.21,
+    1.1,
     1.0,
     0.9,
     0.81,
@@ -49,11 +59,17 @@ const zoomLevels = [
     0.10941898911,
     0.09847709019,
     0.08862938117,
-    0.07976644305
+    0.07976644305,
+    0.0717,
+    0.0646,
+    0.0581,
+    0.0523
 ];
 const minMapZoom = 0;
 const maxMapZoom = zoomLevels.length - 1;
-var zoomIndex = 0
+
+const defaultZoom = 7;
+var zoomIndex = defaultZoom;
 var mapZoom = zoomLevels[zoomIndex];
 
 //holds marker json whenever is saved,
@@ -76,7 +92,7 @@ var selectio = new DragSelect({
     onElementSelect: function(element) {
         if(mouseMode=='edit'){
             if($(".editingMarker").length==0){
-                highlightMarker(element, $(element).attr('id'));
+                highlightMarker($(element).attr('id'));
             }
             else{
                 $(element).addClass('editingMarker');
@@ -133,7 +149,12 @@ function undoStep(){
     var currentJson = operationStack.pop();//since would have just been saved
     var lastJson = operationStack.pop();
     redoStack.push(currentJson);//push current progress before overwriting it, could also use projJson
+    
+    lastId = markerID
     remakeMarkers(lastJson);
+    if (lastId != undefined){
+        highlightMarker(lastId)
+    }
 }
 
 /**
@@ -148,7 +169,11 @@ function redoStep(){
     console.log('redoing step');
     var redoSnapshot = redoStack.pop();//dont need to check size because relies on operationstack 
     //maybe need to do double pop, will have to check that
+    lastId = markerID
     remakeMarkers(redoSnapshot);
+    if (lastId != undefined){
+        highlightMarker(lastId)
+    }
 }
 
 /**
@@ -333,13 +358,13 @@ function loadProject(projectName){
     $('#rightbar, #mapscreen').css('visibility', 'visible');
     $('#welcomeMessage').css('visibility', 'hidden');
     setToolsVisibility(false);
+
     operationStack=[];
     redoStack = [];
     clearText();
     //$("#sizeAdjustor").css('visibility', 'hidden');
 
-    changeZoom(0);//also updates mapzoom
-
+    changeZoom(defaultZoom);//also updates mapzoom
     const imgDir = 'projects/'+projectName+'/image.jpg'
 
     //load main image
@@ -392,10 +417,9 @@ function addNewMarker(currX, currY){
 
     var icon = currentMarkerIcon;
     addJsonMarker(relOrig, id, imgWidth);
+    addExistingMarker(relOrig, id, icon, imgWidth);
 
-    var markerElement = addExistingMarker(relOrig, id, icon, imgWidth);
-
-    highlightMarker(markerElement, id);
+    highlightMarker(id);
 }
 
 /*relOgig in form {x: num, y: num} id is a str, re;ative to curr size
@@ -449,10 +473,12 @@ function addExistingMarker(relOrig, id, icon, iconSize){
 /**
  * highlights a given element.
  * **NOTE** also deselects any other elements
- * @param {HTMLElement} elmnt element to be highlighted
- * @param {string} elmntID the id of that element
+ * @param {string} elmntID the element to be highlighted
  */
-function highlightMarker(elmnt, elmntID){
+function highlightMarker(elmntID){
+
+    elmnt = $("#".concat(elmntID))[0];
+
     var icon = $(elmnt).attr('src');
     saveMarkerText();
 
@@ -460,7 +486,9 @@ function highlightMarker(elmnt, elmntID){
     $(elmnt).addClass('editingMarker');
     highlightedMarker = elmnt;
     markerID = elmntID;
-    setMarkerText(elmnt);
+    setMarkerText(parseInt(projJson.markers[elmntID].currTab));
+
+    UpdateTab(projJson.markers[elmntID].currTab, projJson.markers[elmntID].numTabs);
     //$("#titleText").focus();
     setToolsVisibility(true);
 
@@ -481,15 +509,14 @@ function deselectMarker(){
 
 /**
  * changes the marker text area to visibile and puts text of the current highlighted marker in it
+ * it now adjusts it to the current tab
  */
-function setMarkerText(){
+function setMarkerText(currentTab=1){//should never use default
     setToolsVisibility(true);
 
     var marker = projJson.markers[markerID];
-    //console.log(marker);
-
-    $('#mainText').val(marker.note);
-    $('#titleText').val(marker.title);
+    $('#mainText').val(marker.tabs[currentTab].note);
+    $('#titleText').val(marker.tabs[currentTab].title);
     
     setIconSize(marker.iconSize, true);//will be in reference to true not current
     return;
@@ -508,16 +535,19 @@ function saveMarkerText(){
     var iconSizeToSave = getIconSize(true);
 
     var marker = projJson.markers[markerID];
-    if(marker.note === textToBeSaved &&
-    marker.title === titleToBeSaved && 
+    var markerTab = marker.tabs[marker.currTab];
+
+    if(markerTab.note === textToBeSaved &&
+        markerTab.title === titleToBeSaved && 
     iconSizeToSave == marker.iconSize){
         return;
     }
 
     console.log("saving marker text change");
-    marker.note = textToBeSaved;
-    marker.title = titleToBeSaved;
+    markerTab.note = textToBeSaved;
+    markerTab.title = titleToBeSaved;
     marker.iconSize = Math.round(iconSizeToSave);
+    //console.log(marker)
     newChanges();   
     return;
 }
@@ -592,13 +622,22 @@ function addJsonMarker(position, markerID, markerSize){
     but when reloaded will be with respect to absolute dimensions */
     
     //save marker information on json obj itself
+    //XXX this will need to be changed
     projJson.markers[markerID] = {
         icon: currentMarkerIcon,
         iconSize: markerSize,
         pos: position,
-        title: '',
-        note: ''
+        currTab:"1",
+        numTabs:"2",
+        tabs:{
+            "1":{title: '',
+                note: ''},
+            "2":{title: '',
+            note: ''}
+        }
+
     }
+
     newChanges();
 }
 
@@ -889,6 +928,11 @@ function getIconSize(getTrue=false){
     return imgSize;
 }
 
+function UpdateTab(newValue, max){
+    $("#rangeTab").attr("max", max).val(newValue);
+    $("#currentTab").html(newValue);
+}
+
 /**
  * sets icon size input field on right bar
  * **NOTE** should always set it relative to original
@@ -918,6 +962,33 @@ function saveFile(){
     }
 }
 
+//XXX here for reference
+function reformatJson(){
+    markers = projJson["markers"]
+    projJson["version"] = 1.1
+    for (const [key,values] of Object.entries(markers)){
+
+        projJson.markers[key] = {
+            icon: values["icon"],
+            iconSize: values["iconSize"],
+            pos: values["pos"],
+            currTab:"1",
+            numTabs:"2",
+            "tabs":{
+                "1":
+                {title: values["title"],
+                note: values["note"]},
+                "2":
+                {title: "",
+                note: ""}
+            }
+        }
+    }
+    console.log("reformatting complete");
+    console.log(projJson);
+}
+
+
 /* resets element so can display save animation repeatedly */
 $('#saveel').on('animationend', function(){
     $('#saveel').removeClass('savenow');
@@ -927,6 +998,16 @@ $('#saveel').on('animationend', function(){
 //projInfo has [name, json]
 ipcRenderer.on('project:open', function(e,projInfo){
     projJson = projInfo[1];
+    try {
+        const test = parseFloat(projJson.version)
+        console.log("version number ".concat(test))
+        if (test != 1.1){throw "not current version, updating";}
+        else{console.log("file already ok")}
+    } catch (error) {
+        console.log("not updated")
+        reformatJson()
+    }
+
     loadProject(projInfo[0]);
 });
 
@@ -1016,6 +1097,15 @@ $('#deleteMarker').on('click', function(){
     deleteMarker();
 });
 
+$('#addTab').on('click', function(e){
+    tab = $("#rangeTab");
+    maxVal = parseInt(tab.attr("max"));
+    tab.attr("max", maxVal+1);
+    console.log("are you ".concat(markerID));
+    projJson.markers[markerID].numTabs = maxVal+1
+    projJson.markers[markerID].tabs[maxVal+1] = {title: '',note: ''}
+});
+
 $('#viewMouse').on('click', function(){
     setMouseMode("view");
 });
@@ -1032,11 +1122,12 @@ $('.marker, #mapmarkers').on('click', function(event){
     event.preventDefault();
 });
 
-$('#mainText').on('onkeyup', function() {
-    console.log("hswuie");
-    ipcRenderer.send('work-unsaved');
+$('#mainText').on('keyup', function() {
+    if($('#mainText').val() != lastText){
+        ipcRenderer.send('work-unsaved');
+        lastText = $('#mainText').val()
+    }
 });
-
 
 $('#bgmaterial, #mapimg').on('click', function(e){
     switch (mouseMode) {
@@ -1051,6 +1142,16 @@ $('#bgmaterial, #mapimg').on('click', function(e){
         /*default:
             throw 'mouse mode in something other than view, edit or add';*/
     }
+});
+
+$("#rangeTab").on("input", function(){
+    var newTab = $("#rangeTab").val();
+    UpdateTab(newTab, $("#rangeTab").attr("max"));
+
+    saveMarkerText();
+    projJson.markers[markerID].currTab=newTab;
+    setMarkerText(newTab);
+    //make so is "notes":{1:{"title":"", "conetent": ""}, 2:{"title":"", "conetent": ""}, etc}
 });
 
 makeMarkerOptions();

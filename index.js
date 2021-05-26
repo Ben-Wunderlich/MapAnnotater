@@ -157,8 +157,9 @@ function CreateProjectFiles(items){
 
     //making json file
     var jsonObj = {
-            id: makeid(10),
+            id: makeid(10),//this is not needed for now but might in future
             title: items[0],
+            version:1.1,
             markers:{}
     }
     fs.writeFile(textPath, JSON.stringify(jsonObj), function (err) {
@@ -235,10 +236,12 @@ function chooseProject(){
         let paths = result.filePaths;
         var justName = paths[0].substring(paths[0].lastIndexOf('\\')+1);
         currentProjectTitle = justName;
-        if(paths.length == 0 || !projectFolderisValid(paths[0], justName))
-            return;
+        if(paths.length == 0 || !projectFolderisValid(paths[0], justName)){
+            //XXX make alert here for when path is not valid
+            return;}
         getJson(justName).then(result => {
             startWindow.webContents.send('project:open', [justName, result]);
+            
         })
     }).catch(err => {
         console.log("promise was rejected");

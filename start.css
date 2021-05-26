@@ -34,18 +34,22 @@ button{
     background-color: #356d51;
 }
 
+button:focus{
+    outline-style: ridge;
+    outline-color: #aec6e6;
+    outline-width: 2px;
+}
+
+button:active{
+    background-color: #4a9e74;
+}
+
 #deleteMarker{
     position: relative;
     padding: 10px;
     padding-left: 20px;
     padding-right: 20px;
     background-color: #222831;
-}
-
-button:focus{
-    outline-style: ridge;
-    outline-color: #aec6e6;
-    outline-width: 2px;
 }
 
 #icons{
@@ -69,7 +73,8 @@ button:focus{
     resize: none;
     position: fixed;
     top:10px;
-    height: calc(100vh - 300px);/*this solution is bad but works well*/
+    height: calc(100vh - 350px);/*this solution is bad but works well, 
+    to move up or down use px, increase to move up, decrease to move down*/
     resize: none;
 }
 
@@ -259,4 +264,23 @@ textarea::selection{
     animation-name: save;
     animation-duration: 2s;
     animation-fill-mode: forwards;
+}
+
+.slidecontainer{
+    position: relative;
+}
+
+.slidecontainer *{
+    display: inline;
+}
+
+#rangeTab{
+    width: 60%;
+}
+
+#currentTab{
+    display: inline-block;
+    width: 20px;
+    font-weight: bold;
+    font-size: larger;
 }

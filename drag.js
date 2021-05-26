@@ -90,7 +90,7 @@ function dragMarker(elmnt, id) {
 
     iconBeignDragged = true;
     selectio.break();
-    highlightMarker(elmnt, id);//otherwise dragging has wierd interaction
+    highlightMarker(id);//otherwise dragging has wierd interaction
 
     e = e || window.event;
     // get the mouse cursor position at startup:
