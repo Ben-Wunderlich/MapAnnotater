@@ -11,15 +11,21 @@ html{
     /*top: -50%;*/
 }
 
-#welcomeMessage{
+#welcomeHolder{
     position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+#welcomeMessage{
     background-color: #30475e;
-    height: 30%;
-    min-height: 225px;
-    top: 40%;
-    width: 10%;
-    min-width: 100px;
-    left: 45%;
+    height: 400;
+    /* min-height: 225px; */
+
+    width: 175px;
+    /* min-width: 100px; */
+
     padding: 5px;
     text-align: center;
 }

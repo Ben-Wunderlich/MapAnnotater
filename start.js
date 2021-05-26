@@ -104,7 +104,11 @@ var selectio = new DragSelect({
     },
     onElementUnselect: function(element) {
         if(mouseMode=='edit'){
-        $(element).removeClass('editingMarker');}
+            $(element).removeClass('editingMarker');
+            if ($(".editingMarker").length==0){//gets rid of text when no marker selected
+                deselectMarker();
+            }
+        }
     }/*,
     callback: function(){
         could call here thing when released
@@ -915,7 +919,7 @@ function getOffsets(selector){
 
 /**
  * gets value of #iconResizeInput and converts to relative to current size
- * @param {boolean} getTrue if true will get you relative to original size
+ * @param {boolean} getTrue if true will get relative to original size
  */
 function getIconSize(getTrue=false){
     var imgSize = $('#iconResizeInput').val();
@@ -1001,11 +1005,11 @@ ipcRenderer.on('project:open', function(e,projInfo){
     try {
         const test = parseFloat(projJson.version)
         console.log("version number ".concat(test))
-        if (test != 1.1){throw "not current version, updating";}
+        if (test != 1.1){throw "no one will ever read this";}
         else{console.log("file already ok")}
     } catch (error) {
-        console.log("not updated")
-        reformatJson()
+        console.log("not current version, updating");
+        reformatJson();
     }
 
     loadProject(projInfo[0]);

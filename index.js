@@ -149,7 +149,7 @@ function mkdirp(dir) {
  */
 function CreateProjectFiles(items){
     const folderpath = path.join(__dirname,'projects',items[0]);
-    const textPath = path.join(folderpath, items[0].concat('.json'));
+    const textPath = path.join(folderpath, 'projectInfo.json');
     const imagePath = path.join(folderpath, 'image.jpg');
 
     //making directory
@@ -183,7 +183,7 @@ function CreateProjectFiles(items){
 function getJson(projectName){
     return new Promise(resolve =>{
 
-    const filePath = path.join(__dirname, 'projects', projectName, projectName.concat('.json'));
+    const filePath = path.join(__dirname, 'projects', projectName, 'projectInfo.json');
         fs.readFile(filePath, (err, data) => {
             if(err) throw err;
             resolve(JSON.parse(data));
@@ -213,13 +213,22 @@ function afterSaveCheck(){
     toDoAfterSaving = NOTHING;
 }
 
-function projectFolderisValid(projPath, title){
+function projectFolderisValid(projPath){
     if (fs.existsSync(projPath) &&
-    fs.existsSync(path.join(projPath, title+".json")) &&
+    fs.existsSync(path.join(projPath, "projectInfo.json")) &&
     fs.existsSync(path.join(projPath, "image.jpg"))){
         return true;
     }
     return false;
+}
+
+function ShowError(message){
+    dialog.showMessageBoxSync(
+        {
+            type: 'error',
+            title: 'Error',
+            message: message
+    });
 }
 
 /** 
@@ -236,15 +245,15 @@ function chooseProject(){
         let paths = result.filePaths;
         var justName = paths[0].substring(paths[0].lastIndexOf('\\')+1);
         currentProjectTitle = justName;
-        if(paths.length == 0 || !projectFolderisValid(paths[0], justName)){
-            //XXX make alert here for when path is not valid
+        if(paths.length == 0 || !projectFolderisValid(paths[0])){
+            ShowError("project files are invalid, try restarting");
             return;}
         getJson(justName).then(result => {
+            result.title = justName;
             startWindow.webContents.send('project:open', [justName, result]);
-            
         })
     }).catch(err => {
-        console.log("promise was rejected");
+        console.log("promise was rejected, project will not be opened");
     });
 
     /*fs.readdirSync(projectsUrl).forEach(file => {
@@ -344,7 +353,7 @@ function sendModeChange(mouseValue){
 
 //recieves json file from window
 ipcMain.on('project:savefile', function(e, fileContents){
-    jsonPath = path.join(__dirname, 'projects', fileContents.title, fileContents.title.concat('.json'));
+    jsonPath = path.join(__dirname, 'projects', fileContents.title, 'projectInfo.json');
     unsavedWork = false;
     startWindow.setTitle(currentProjectTitle);
 
@@ -353,7 +362,7 @@ ipcMain.on('project:savefile', function(e, fileContents){
         console.log("The file was saved!");
     }); 
 
-    afterSaveCheck()
+    afterSaveCheck();
 });
 
 ipcMain.on('change:redo', function(e, isEnabled){
@@ -402,7 +411,7 @@ const mainMenuTemplate = [
                        //do nothing
                     }
                     else{//some kind of error
-                        console.log("ERROR ON ISLE 6!");
+                        ShowError("Error encountered checking work");
                     }
                 }
                 else{
