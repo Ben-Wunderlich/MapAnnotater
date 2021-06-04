@@ -626,7 +626,6 @@ function addJsonMarker(position, markerID, markerSize){
     but when reloaded will be with respect to absolute dimensions */
     
     //save marker information on json obj itself
-    //XXX this will need to be changed
     projJson.markers[markerID] = {
         icon: currentMarkerIcon,
         iconSize: markerSize,
@@ -634,10 +633,8 @@ function addJsonMarker(position, markerID, markerSize){
         currTab:"1",
         numTabs:"2",
         tabs:{
-            "1":{title: '',
-                note: ''},
-            "2":{title: '',
-            note: ''}
+            "1":{title: '',note: ''},
+            "2":{title: '',note: ''}
         }
 
     }
@@ -932,6 +929,11 @@ function getIconSize(getTrue=false){
     return imgSize;
 }
 
+/**
+ * sets the range tab selector and indicator item to specified values
+ * @param {int} newValue the new current tab
+ * @param {int} max the new maximum number of tabs
+ */
 function UpdateTab(newValue, max){
     $("#rangeTab").attr("max", max).val(newValue);
     $("#currentTab").html(newValue);
@@ -980,11 +982,9 @@ function reformatJson(){
             numTabs:"2",
             "tabs":{
                 "1":
-                {title: values["title"],
-                note: values["note"]},
+                {title: values["title"],note: values["note"]},
                 "2":
-                {title: "",
-                note: ""}
+                {title: "",note: ""}
             }
         }
     }
@@ -1103,11 +1103,14 @@ $('#deleteMarker').on('click', function(){
 
 $('#addTab').on('click', function(e){
     tab = $("#rangeTab");
-    maxVal = parseInt(tab.attr("max"));
-    tab.attr("max", maxVal+1);
-    console.log("are you ".concat(markerID));
-    projJson.markers[markerID].numTabs = maxVal+1
-    projJson.markers[markerID].tabs[maxVal+1] = {title: '',note: ''}
+    newMaxVal = parseInt(tab.attr("max"))+1;
+
+    projJson.markers[markerID].numTabs = newMaxVal
+    projJson.markers[markerID].currTab = newMaxVal
+    projJson.markers[markerID].tabs[newMaxVal] = {title: '',note: ''}
+
+    UpdateTab(newMaxVal, newMaxVal);
+    setMarkerText(newMaxVal);
 });
 
 $('#viewMouse').on('click', function(){
@@ -1120,6 +1123,34 @@ $('#addMouse').on('click', function(){
 
 $('#editMouse').on('click', function(){
     setMouseMode("edit");
+});
+
+$('#delTab').on("click", function(){
+    markerObj= projJson.markers[markerID];
+    tabs = markerObj.tabs;
+
+    tabCount = parseInt(markerObj.numTabs);
+    removeableTab = parseInt(markerObj.currTab);
+    //make sure at least 1(or 2, check one first)
+    if (tabCount <= 2){
+        ipcRenderer.send('error:message', "Each marker must have at least 2 tabs");
+        return;}
+
+    //move other entries to fill space
+    for(var i = removeableTab; i < tabCount; i++){
+        tabs[i] = tabs[i+1];
+    }
+
+    delete tabs[tabCount];
+
+    markerObj.numTabs = tabCount-1;
+    if(removeableTab > 1)
+        {markerObj.currTab = removeableTab-1;}
+    else//if is 1
+        {markerObj.currTab = 1;}
+
+    UpdateTab(markerObj.currTab, markerObj.numTabs)
+    setMarkerText(markerObj.currTab);
 });
 
 $('.marker, #mapmarkers').on('click', function(event){
@@ -1159,3 +1190,4 @@ $("#rangeTab").on("input", function(){
 });
 
 makeMarkerOptions();
+ipcRenderer.send('done-loading');

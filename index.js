@@ -29,6 +29,8 @@ const OPEN = 1;
 const QUIT = 2
 var toDoAfterSaving = NOTHING;
 
+const appSettingsPath = 'AppSettings.json'
+
 console.log(app.getPath("documents"));//"home"
 
 // listen for app to be ready
@@ -48,7 +50,7 @@ app.on('ready', function(){
         icon: nativeImage.createFromPath('myicon.ico')
     });
 
-    //load html file into window
+    // html file into window
     //var startPath = __dirname;
     
     //if(startPath.includes("app.asar")){
@@ -184,10 +186,10 @@ function getJson(projectName){
     return new Promise(resolve =>{
 
     const filePath = path.join(__dirname, 'projects', projectName, 'projectInfo.json');
-        fs.readFile(filePath, (err, data) => {
-            if(err) throw err;
-            resolve(JSON.parse(data));
-        });
+    fs.readFile(filePath, (err, data) => {
+        if(err) throw err;
+        resolve(JSON.parse(data));
+    });
     });
 }
 
@@ -246,11 +248,12 @@ function chooseProject(){
         var justName = paths[0].substring(paths[0].lastIndexOf('\\')+1);
         currentProjectTitle = justName;
         if(paths.length == 0 || !projectFolderisValid(paths[0])){
-            ShowError("project files are invalid, try restarting");
+            ShowError("project files at '"+paths[0]+"' are invalid, try restarting the program");
             return;}
         getJson(justName).then(result => {
             result.title = justName;
             startWindow.webContents.send('project:open', [justName, result]);
+            InteractLastProject(false, result.title);
         })
     }).catch(err => {
         console.log("promise was rejected, project will not be opened");
@@ -312,22 +315,21 @@ function deleteVerify(){
     }
 }
 
-/** 
+/**
  * deletes all files of the current project
- * */ 
-function deleteProjectFiles(){
+ * @param {string} nameOfDelete (optional) changes name in delete message
+ */
+function deleteProjectFiles(nameOfDelete="none"){
     var folderPath = path.join(__dirname, 'projects', currentProjectTitle); 
 
     fs.rmdir(folderPath, { recursive: true }, (err) => {
         if (err) {
             throw err;
         }
-    
-        console.log(currentProjectTitle +' is deleted!');
+        console.log(nameOfDelete +' is now deleted!');
     });
 
     currentProjectTitle = undefined;
-    //at end
 }
 
 /**
@@ -337,6 +339,30 @@ function deleteProjectFiles(){
 function setRedo(isEnabled){
     var menuItem = Menu.getApplicationMenu().getMenuItemById('redoMenuItem');
     menuItem.enabled = isEnabled;
+}
+
+/**
+ * gets and sets project that is opened on startup
+ * @param {bool} getProject whether to get or sat last project records, if false will set with newLastProject
+ * @param {string} newLastProject the name of project that will should be open on next statup, will be ignored if getProject is true
+ * @returns 
+ */
+function InteractLastProject(getProject, newLastProject="none"){
+    let rawdata = fs.readFileSync('AppSettings.json');
+    var settingsData = JSON.parse(rawdata);
+    var lastProject = settingsData.openProject;
+    
+    if(getProject){//get last project
+        return lastProject;
+    }
+    else{//save last project
+        settingsData.openProject = newLastProject
+        console.log(JSON.stringify(settingsData));
+        fs.writeFile(appSettingsPath, JSON.stringify(settingsData), function(err) {
+            if(err) throw err;
+            console.log("The setttings file was saved! ".concat(lastProject));
+        }); 
+    }
 }
 
 function sendModeChange(mouseValue){
@@ -369,6 +395,10 @@ ipcMain.on('change:redo', function(e, isEnabled){
     setRedo(isEnabled);
 });
 
+ipcMain.on('error:message', function(e, message){
+    ShowError(message);
+});
+
 //items in form [project_name, image_buffer]
 ipcMain.on('project:add', function(e, items){
     console.log(items[1].byteLength);
@@ -387,6 +417,26 @@ ipcMain.on('setTitle', function(e, newTitle){
 ipcMain.on('work-unsaved', function(e, True){
     unsavedWork = true;
     startWindow.setTitle(currentProjectTitle+"*");
+})
+
+//when start screen is loaded, change to the last open project if available
+ipcMain.on('done-loading', function(e){
+    lastProject = InteractLastProject(true);
+    projectPath = path.join(__dirname,'projects',lastProject);
+
+    if(lastProject != "none" && projectFolderisValid(projectPath)){
+        currentProjectTitle = lastProject;
+        getJson(lastProject).then(result => {
+            result.title = lastProject;
+            console.log("sending open request with ".concat(lastProject));
+            startWindow.webContents.send('project:open', [lastProject, result]);
+        }).catch(err => {
+            console.log(err);
+        });
+    }
+    else{
+        console.log("no last to load");
+    }
 })
 
 const mainMenuTemplate = [
@@ -465,7 +515,7 @@ const mainMenuTemplate = [
                     startWindow.webContents.send('project:delete');
 
                     //delete files
-                    deleteProjectFiles();
+                    deleteProjectFiles(currentProjectTitle);
                     currentProjectTitle = -1;
                 }
             }
